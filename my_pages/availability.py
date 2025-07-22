@@ -58,6 +58,15 @@ def app_tab1(df):
         st.info("Please select both a start and end date to continue.")
         return
 
+    # --- Dynamic Title ---
+    site_info = df[df['site_id'] == selected_siteid].iloc[0]
+    site_class = site_info.get('site_class', 'Unknown')
+
+    st.markdown(f"""
+    ### 📊 Daily Performance  
+    **Site ID**: `{selected_siteid}` &nbsp;&nbsp;|&nbsp;&nbsp; **Regional**: `{selected_regional}` &nbsp;&nbsp;|&nbsp;&nbsp; **Site Class**: `{site_class}`
+    """)
+
     # --- Plot Chart ---
     fig = go.Figure()
 
@@ -391,6 +400,16 @@ def app_tab3(df):
     if filtered_df.empty:
         st.warning("No data found for the selected filters.")
         return
+
+    # --- Dynamic Title ---
+    site_info = df[df['site_id'] == selected_siteid].iloc[0]
+    site_class = site_info.get('site_class', 'Unknown')
+
+    st.markdown(f"""
+    ### 📊 Weekly Performance  
+    **Site ID**: `{selected_siteid}` &nbsp;&nbsp;|&nbsp;&nbsp; **Regional**: `{selected_regional}` &nbsp;&nbsp;|&nbsp;&nbsp; **Site Class**: `{site_class}`
+    """)
+    
 
     # --- Chart ---
     fig = go.Figure()
