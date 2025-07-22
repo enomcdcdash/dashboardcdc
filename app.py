@@ -3,7 +3,7 @@ from sidebar import navigation
 from my_pages import availability, overview, tracker_bbm
 
 st.set_page_config(page_title="CDC Dashboard", layout="wide")
-
+st.write("Available secrets keys:", list(st.secrets.keys()))
 # --- Use sidebar navigation ---
 selected_page = navigation()
 
