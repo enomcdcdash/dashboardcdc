@@ -27,7 +27,7 @@ def get_drive():
 def get_drive_service():
     gauth = GoogleAuth()
 
-    # Write credentials to a temporary file
+    # --- Write service account credentials from secrets to a temp file
     with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as temp_file:
         json.dump(st.secrets["service_account"], temp_file)
         temp_file.flush()
