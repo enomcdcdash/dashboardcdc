@@ -7,6 +7,7 @@ import io
 import re
 import streamlit.components.v1 as components
 from utils.data_loader import get_drive_oauth, upload_file_to_drive, download_file_from_drive, load_bbm_tracker_data
+from utils.data_loader import get_drive as get_drive_auto
 
 # Constants
 DATA_FOLDER_ID = "1qAn7O6QEahUtVhAxRfLzDZZ36s5v2_fk"
@@ -16,7 +17,7 @@ BBM_FILE = "pengisian_bbm.xlsx"
 
 @st.cache_resource
 def get_drive():
-    return get_drive_oauth()
+    return get_drive_auto()
 
 def app_tab1():
     st.subheader("⛽ Input Data Pengisian BBM")
