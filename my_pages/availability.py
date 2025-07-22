@@ -150,7 +150,9 @@ def app_tab1(df):
     st.plotly_chart(fig, use_container_width=True)
 
     with st.expander("🧾 Filtered Data Details"):
-        st.dataframe(filtered_df, use_container_width=True)
+        df_to_display = filtered_df.copy()
+        df_to_display['Date'] = df_to_display['Date'].dt.strftime('%d-%B-%Y')
+        st.dataframe(df_to_display, use_container_width=True)
 
     # --- Download filtered data ---
     csv_filtered = filtered_df.to_csv(index=False).encode('utf-8')
