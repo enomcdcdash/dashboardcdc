@@ -30,15 +30,21 @@ def get_drive_service():
     service_info = st.secrets["google_service_account"]
     client_email = service_info["client_email"]
 
+    # Save JSON to file
     with open("service_secrets.json", "w") as f:
         json.dump(dict(service_info), f)
 
+    # Set config backend and service config
     gauth.DEFAULT_SETTINGS['client_config_backend'] = 'service'
     gauth.DEFAULT_SETTINGS['service_config'] = {
         'client_json_file_path': 'service_secrets.json',
         'client_user_email': client_email
     }
 
+    # ✅ Apply settings explicitly (important!)
+    gauth.settings = gauth.GetSettings()
+
+    # Authenticate
     gauth.ServiceAuth()
     return GoogleDrive(gauth)
 
