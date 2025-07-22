@@ -63,7 +63,7 @@ def app_tab1(df):
     site_class = site_info.get('site_class', 'Unknown')
 
     st.markdown(f"""
-    ### 📊 Daily Performance  
+    ### 📊 Daily Availability Performance  
     **Site ID**: `{selected_siteid}` &nbsp;&nbsp;|&nbsp;&nbsp; **Regional**: `{selected_regional}` &nbsp;&nbsp;|&nbsp;&nbsp; **Site Class**: `{site_class}`
     """)
 
@@ -406,7 +406,7 @@ def app_tab3(df):
     site_class = site_info.get('site_class', 'Unknown')
 
     st.markdown(f"""
-    ### 📊 Weekly Performance  
+    ### 📊 Weekly Availability Performance  
     **Site ID**: `{selected_siteid}` &nbsp;&nbsp;|&nbsp;&nbsp; **Regional**: `{selected_regional}` &nbsp;&nbsp;|&nbsp;&nbsp; **Site Class**: `{site_class}`
     """)
     
