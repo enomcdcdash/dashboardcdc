@@ -4,3 +4,4 @@ pandas
 openpyxl
 plotly
 geopandas
+folium
