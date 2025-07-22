@@ -27,17 +27,11 @@ def get_drive():
 def get_drive_service():
     gauth = GoogleAuth()
 
-    service_info = st.secrets["google_service_account"]
-    client_email = service_info["client_email"]
-
-    with open("service_secrets.json", "w") as f:
-        json.dump(dict(service_info), f)
-
-    gauth.DEFAULT_SETTINGS['client_config_backend'] = 'service'
-    gauth.DEFAULT_SETTINGS['service_config'] = {
-        'client_json_file_path': 'service_secrets.json',
-        'client_user_email': client_email
-    }
+    # Write credentials to a temporary file
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as temp_file:
+        json.dump(st.secrets["service_account"], temp_file)
+        temp_file.flush()
+        gauth.LoadServiceConfigFile(temp_file.name)
 
     gauth.ServiceAuth()
     return GoogleDrive(gauth)
