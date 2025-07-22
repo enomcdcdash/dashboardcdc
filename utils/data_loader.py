@@ -27,21 +27,27 @@ def get_drive():
 def get_drive_service():
     gauth = GoogleAuth()
 
+    # Load credentials from Streamlit secrets
     service_info = st.secrets["google_service_account"]
     client_email = service_info["client_email"]
 
-    # ✅ Write service account credentials to a temporary file
-    with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".json") as temp_file:
+    # Save credentials temporarily
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as temp_file:
         json.dump(dict(service_info), temp_file)
         temp_file_path = temp_file.name
 
-    # ✅ Set up PyDrive2 for service authentication
+    # ✅ Define full required settings
     gauth.settings = {
         "client_config_backend": "service",
         "service_config": {
             "client_json_file_path": temp_file_path,
             "client_user_email": client_email,
         },
+        # ✅ Required to avoid KeyError on oauth_scope
+        "oauth_scope": [
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/drive.file",
+        ],
     }
 
     # Authenticate
