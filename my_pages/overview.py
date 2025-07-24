@@ -74,7 +74,7 @@ def app_tab1():
         with cols[i]:
             st.markdown(f"""
                 <div style="
-                    background-color: {get_color(reg)};
+                    background-color: {get_card_color(reg)};
                     border-radius: 12px;
                     padding: 15px 20px;
                     margin-bottom: 10px;
