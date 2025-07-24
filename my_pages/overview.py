@@ -22,15 +22,30 @@ def get_color(regional):
     }
     return color_map.get(regional, 'gray')
 
-# --- Tab 1 content ---
+# --- Regional color mapping ---
+REGIONAL_COLORS = {
+    "Bali Nusra": "lightpink",
+    "Jawa Timur": "palegreen",
+    "Kalimantan": "lightsalmon",
+    "Puma": "powderblue",
+    "Sulawesi": "lightyellow",
+    "Sumbagsel": "papayawhip",
+    "Sumbagteng": "peachpuff"
+}
+
+def get_card_color(regional):
+    return REGIONAL_COLORS.get(regional, "#dfe6e9")  # default light gray if not found
+
 def app_tab1():
-    st.markdown("### 📍 Site Locations Map")
+    col1, col2 = st.columns([9, 1])  # Title wide, button narrow
 
-    # --- Refresh button ---
-    col1, col2 = st.columns([1, 9])
-    refresh = col1.button("🔄 Refresh from Drive", help="Reload the latest KML file")
+    with col1:
+        st.markdown("### 📍 Site Locations Map")
 
-    # --- Load data only once per session ---
+    with col2:
+        refresh = st.button("🔄 Refresh from Drive", help="Reload the latest KML file")
+    
+    #--- Load data only once per session ---
     if refresh or "cdc_sites_gdf" not in st.session_state:
         with st.spinner("Loading site data..."):
             drive = get_drive()
@@ -42,6 +57,42 @@ def app_tab1():
     if gdf.empty:
         st.warning("No data to display. Please check your KML file.")
         return
+
+    # --- Summary Cards: Regional Info ---
+    #st.markdown("#### 🗂️ Site Summary by Regional")
+
+    unique_regionals = sorted(gdf["Regional"].dropna().unique())
+    cols = st.columns(len(unique_regionals))  # One column per Regional
+
+    for i, reg in enumerate(unique_regionals):
+        sub_df = gdf[gdf["Regional"] == reg]
+
+        total_sites = len(sub_df)
+        class_counts = sub_df["Site Class"].value_counts().to_dict()
+        status_on = sub_df[sub_df["Status"].str.lower().str.contains("on")].shape[0]
+
+        with cols[i]:
+            st.markdown(f"""
+                <div style="
+                    background-color: {get_card_color(reg)};
+                    border-radius: 12px;
+                    padding: 15px 20px;
+                    margin-bottom: 10px;
+                    box-shadow: 1px 1px 6px rgba(0, 0, 0, 0.1);
+                    font-family: 'Segoe UI', sans-serif;
+                ">
+                    <h5 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 22px;">{reg}</h5>
+                    <p style="margin: 0; font-size: 16px;"><b>Total Sites:</b> {total_sites}</p>
+                    <p style="margin: 0; font-size: 16px;">
+                        <b>Class:</b> 
+                        Platinum ({class_counts.get('Platinum', 0)}), 
+                        Gold ({class_counts.get('Gold', 0)}), 
+                        Silver ({class_counts.get('Silver', 0)}), 
+                        Bronze ({class_counts.get('Bronze', 0)})
+                    </p>
+                    <p style="margin: 0; font-size: 16px;"><b>Site On Service:</b> {status_on}</p>
+                </div>
+            """, unsafe_allow_html=True)
 
     # Ensure lat/lon columns
     if "Latitude" not in gdf.columns or "Longitude" not in gdf.columns:
@@ -74,7 +125,6 @@ def app_tab1():
                 icon=folium.Icon(color=get_color(row.get("Regional")))
             ).add_to(m)
 
-    # Force full-height folium map
     st.markdown("""
         <style>
         .folium-map {
@@ -83,8 +133,7 @@ def app_tab1():
         </style>
     """, unsafe_allow_html=True)
 
-    folium_static(m, width=2000, height=800)  # ✅ Use folium_static instead of st_folium
-
+    folium_static(m, width=2015, height=800)
 # --- TAB 2: Summary View ---
 def app_tab2():
     st.subheader("📊 CDC Sites Summary")
