@@ -18,6 +18,7 @@ def app_tab1(df):
     df['outage_4g (Hour)'] = pd.to_numeric(df['outage_4g (Hour)'], errors='coerce')
     df['availability (%)'] = pd.to_numeric(df['availability (%)'], errors='coerce')
     df = df.dropna(subset=['Date'])
+    df['Date_Display'] = df['Date'].dt.strftime('%d-%B-%Y')
 
     # --- Filters ---
     min_date, max_date = df['Date'].min(), df['Date'].max()
@@ -63,7 +64,7 @@ def app_tab1(df):
     site_class = site_info.get('site_class', 'Unknown')
 
     st.markdown(f"""
-    ### 📊 Daily Availability Performance  
+    ### 📊 Daily Availability  
     **Site ID**: `{selected_siteid}` &nbsp;&nbsp;|&nbsp;&nbsp; **Regional**: `{selected_regional}` &nbsp;&nbsp;|&nbsp;&nbsp; **Site Class**: `{site_class}`
     """)
 
@@ -80,7 +81,8 @@ def app_tab1(df):
         text=filtered_df['occurrence'],
         textposition='auto',
         #insidetextanchor='start',
-        textfont=dict(size=16, color='black')
+        textfont=dict(size=16, color='black'),
+        hovertemplate='Kejadian : %{y}<extra></extra>'
     ))
 
     # Line: Outage 2G
@@ -90,7 +92,8 @@ def app_tab1(df):
         mode='lines+markers',
         name='Outage 2G (Hr)',
         yaxis='y1',
-        line=dict(color='#1f77b4', width=4)
+        line=dict(color='#1f77b4', width=4),
+        hovertemplate='Outage 2G : %{y:.2f} jam<extra></extra>'
     ))
 
     # Line: Outage 4G
@@ -100,7 +103,8 @@ def app_tab1(df):
         mode='lines+markers',
         name='Outage 4G (Hr)',
         yaxis='y1',
-        line=dict(color='#d62728', width=4)
+        line=dict(color='#d62728', width=4),
+        hovertemplate='Outage 4G : %{y:.2f} jam<extra></extra>'
     ))
 
     # Add formatted labels
@@ -118,19 +122,22 @@ def app_tab1(df):
         text=filtered_df['availability (%)'].round(2).astype(str) + '%',
         textposition='top center',
         textfont=dict(size=16, color='#2ca02c'),
-        hovertemplate='Availability: %{y:.2f}%<extra></extra>'
+        hovertemplate='Availability : %{y:.2f}%<extra></extra>'
     ))
 
     fig.update_layout(
-        title="📊 Daily Performance",
+        #dashboard_title = f"📊 Daily Performance — Site: {selected_siteid} (Regional: {selected_regional}, Class: {site_class})",
         xaxis=dict(
             title=dict(text="Date", font=dict(size=16, family="Arial", color="black")),
             tickfont=dict(size=14),
-            tickformat="%d-%b-%Y"  # 👈 Format to show as 17-Jul-2025
+            tickmode="linear",
+            dtick=86400000.0,
+            tickformat="%d-%b-%Y",  # 👈 Format to show as 17-Jul-2025
+            tickangle=-45
         ),
         yaxis=dict(
             title=dict(text="Jumlah Kejadian / Outage Hours", font=dict(size=16, family="Arial", color="black")),
-            tickfont=dict(size=14),
+            tickfont=dict(size=18),
             side='left',
             showgrid=False
         ),
@@ -144,12 +151,16 @@ def app_tab1(df):
         ),
         hovermode='x unified',
         hoverlabel=dict(
-            bgcolor="white",
+            bgcolor="lightyellow",
             font_size=14,
             font_family="Arial"
         ),
         legend=dict(
             orientation="h",
+            yanchor="bottom",
+            y=-0.4,  # Push further down if needed
+            xanchor="left",
+            x=0,
             font=dict(size=16)
         ),
         margin=dict(l=40, r=40, t=60, b=40),
@@ -406,10 +417,9 @@ def app_tab3(df):
     site_class = site_info.get('site_class', 'Unknown')
 
     st.markdown(f"""
-    ### 📊 Weekly Availability Performance  
+    ### 📊 Weekly Performance  
     **Site ID**: `{selected_siteid}` &nbsp;&nbsp;|&nbsp;&nbsp; **Regional**: `{selected_regional}` &nbsp;&nbsp;|&nbsp;&nbsp; **Site Class**: `{site_class}`
     """)
-    
 
     # --- Chart ---
     fig = go.Figure()
@@ -421,7 +431,8 @@ def app_tab3(df):
         marker_color="#F7C989",
         text=filtered_df['occurrence'],
         textposition='auto',
-        textfont=dict(size=16, color='black')
+        textfont=dict(size=16, color='black'),
+        hovertemplate='Kejadian : %{y}<extra></extra>'
     ))
 
     fig.add_trace(go.Scatter(
@@ -429,7 +440,8 @@ def app_tab3(df):
         y=filtered_df['outage_2g (Hour)'],
         mode='lines+markers',
         name='Outage 2G (Hr)',
-        line=dict(color='#1f77b4', width=4)
+        line=dict(color='#1f77b4', width=4),
+        hovertemplate='Outage 2G : %{y:.2f} jam<extra></extra>'
     ))
 
     fig.add_trace(go.Scatter(
@@ -437,7 +449,8 @@ def app_tab3(df):
         y=filtered_df['outage_4g (Hour)'],
         mode='lines+markers',
         name='Outage 4G (Hr)',
-        line=dict(color='#d62728', width=4)
+        line=dict(color='#d62728', width=4),
+        hovertemplate='Outage 4G : %{y:.2f} jam<extra></extra>'
     ))
 
     fig.add_trace(go.Scatter(
@@ -449,11 +462,12 @@ def app_tab3(df):
         line=dict(color='#2ca02c', width=4),
         text=filtered_df['availability (%)'].round(2).astype(str) + '%',
         textposition='top center',
-        textfont=dict(size=16, color='#2ca02c')
+        textfont=dict(size=16, color='#2ca02c'),
+        hovertemplate='Availability : %{y:.2f}%<extra></extra>'
     ))
 
     fig.update_layout(
-        title="📊 Weekly Performance",
+        #title="📊 Weekly Performance",
         xaxis=dict(
             title=dict(text="Week", font=dict(size=16)),
             tickfont=dict(size=14),
@@ -474,8 +488,8 @@ def app_tab3(df):
         ),
         hovermode='x unified',
         hoverlabel=dict(
-            bgcolor="white",
-            font_size=16,
+            bgcolor="lightyellow",
+            font_size=18,
             font_family="Arial"
         ),
         legend=dict(orientation="h", font=dict(size=14)),
