@@ -70,6 +70,7 @@ def app_tab1():
         total_sites = len(sub_df)
         class_counts = sub_df["Site Class"].value_counts().to_dict()
         status_on = sub_df[sub_df["Status"].str.lower().str.contains("on")].shape[0]
+        status_off = sub_df[sub_df["Status"].str.lower().str.contains("cut")].shape[0]
 
         with cols[i]:
             st.markdown(f"""
@@ -91,6 +92,7 @@ def app_tab1():
                         Bronze ({class_counts.get('Bronze', 0)})
                     </p>
                     <p style="margin: 0; font-size: 16px;"><b>Site On Service:</b> {status_on}</p>
+                    <p style="margin: 0; font-size: 16px;"><b>Site Cut Off:</b> {status_off}</p>
                 </div>
             """, unsafe_allow_html=True)
 
