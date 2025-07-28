@@ -80,9 +80,15 @@ def app_tab1(df):
     site_class = site_info.get('site_class', 'Unknown')
 
     st.markdown(f"""
-    ### 📊 Daily Availability  
-    **Site ID**: `{selected_siteid}` &nbsp;&nbsp;|&nbsp;&nbsp; **Regional**: `{selected_regional}` &nbsp;&nbsp;|&nbsp;&nbsp; **Site Class**: `{site_class}`
-    """)
+        <div style="font-size:24px; font-weight:bold; margin-bottom:5px;">
+            📊 Daily Availability
+        </div>
+        <div style="font-size:20px;">
+            <b>Site ID</b>: <span style="color: forestgreen; font-weight: bold;">{selected_siteid}</span> &nbsp;&nbsp;|&nbsp;&nbsp;
+            <b>Regional</b>: <span style="color: forestgreen; font-weight: bold;">{selected_regional}</span> &nbsp;&nbsp;|&nbsp;&nbsp;
+            <b>Site Class</b>: <span style="color: forestgreen; font-weight: bold;">{site_class}</span> &nbsp;&nbsp;|&nbsp;&nbsp;
+        </div>
+    """, unsafe_allow_html=True)
 
     # --- Plot Chart ---
     fig = go.Figure()
