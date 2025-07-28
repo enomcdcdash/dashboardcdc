@@ -154,7 +154,7 @@ def app():
     with col1:
         st.title("🎟️ CDC Overview")
     with col2:
-        if st.button("🔄 Refresh Data", help="Reload availability data"):
+        if st.button("🔄 Refresh Data", help="Reload data"):
             st.cache_data.clear()
             st.rerun()
             
