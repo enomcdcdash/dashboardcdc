@@ -39,7 +39,23 @@ def app_tab1(df):
     with col4:
         site_df = reg_df[reg_df['regional'] == selected_regional]
         site_options = sorted(site_df['site_id'].dropna().unique())
-        selected_siteid = st.selectbox("Site ID", site_options, index=random.randint(0, len(site_options)-1), key="tab1_siteid")
+
+        if site_options:
+            # Get previous selection if valid, otherwise pick random
+            previous_selection = st.session_state.get("tab1_siteid")
+            if previous_selection in site_options:
+                default_index = site_options.index(previous_selection)
+            else:
+                default_index = random.randint(0, len(site_options)-1)
+
+            selected_siteid = st.selectbox(
+                "Site ID",
+                site_options,
+                index=default_index,
+                key="tab1_siteid"
+            )
+        else:
+            selected_siteid = None
 
     if len(date_range) == 2:
         mask = (
