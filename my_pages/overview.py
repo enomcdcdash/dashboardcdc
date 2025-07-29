@@ -320,7 +320,7 @@ def app_tab2():
 
         class_facet.update_layout(
             title=dict(
-                text="📊 Site Class Distribution per Regional (Faceted)",
+                text="📊 Site Class Distribution per Regional",
                 font=dict(size=20),
                 y=0.95,  # Keep the title near the top (0.0 = bottom, 1.0 = top)
                 yanchor="top"
