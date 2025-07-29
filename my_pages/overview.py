@@ -136,35 +136,241 @@ def app_tab1():
     """, unsafe_allow_html=True)
 
     folium_static(m, width=2015, height=800)
+    
 # --- TAB 2: Summary View ---
 def app_tab2():
     st.subheader("📊 CDC Sites Summary")
 
-    # Placeholder content – update with your own summary logic
-    st.info("This section will contain CDC site summary statistics, KPIs, charts, etc.")
-    # Example:
-    # - Total number of sites
-    # - Site distribution by class/region
-    # - Availability stats
-    # - Achievement by region
+    gdf = st.session_state.get("cdc_sites_gdf")
+    if gdf is None or gdf.empty:
+        st.warning("Data is not available. Please refresh from Tab 1.")
+        return
+
+    # Use 1:2 ratio layout (wider pie chart column now)
+    col1, col2 = st.columns([2, 4])
+
+    # ----- DONUT CHART: Status Breakdown -----
+    with col1:
+        status_counts = gdf["Status"].str.strip().str.lower().value_counts()
+        on_count = status_counts.get("on service", 0)
+        off_count = status_counts.get("cut off", 0)
+        total_sites = on_count + off_count
+
+        donut_fig = go.Figure(data=[go.Pie(
+            labels=["On Service", "Cut Off"],
+            values=[on_count, off_count],
+            hole=0.55,
+            textinfo="label+percent+value",
+            marker=dict(
+                colors=["mediumseagreen", "lightcoral"],  # 🌈 More visible colors
+                line=dict(color="white", width=2)         # ✏️ Add border
+            ),
+            textfont=dict(size=18, color="white"),
+            showlegend=False
+        )])
+
+        donut_fig.update_layout(
+            title=dict(
+                text="Site Status Distribution",
+                x=0.05,
+                font=dict(size=20)
+            ),
+            annotations=[dict(
+                text=f"<b>{total_sites} Sites</b>",
+                x=0.5,
+                y=0.5,
+                font=dict(size=40),
+                showarrow=False
+            )],
+            height=500,
+            hoverlabel=dict(
+                font_size=16,
+                bgcolor="lightyellow",
+                font_family="Arial",
+                font_color="black"
+            ),
+            margin=dict(t=80, b=20, l=0, r=0)
+        )
+
+        st.plotly_chart(donut_fig, use_container_width=True)
+
+    # ----- BAR CHART: Regional Breakdown -----
+    with col2:
+        regional_counts = gdf["Regional"].value_counts().reset_index()
+        regional_counts.columns = ["Regional", "Count"]
+
+        custom_order = [
+            "Sumbagteng", "Sumbagsel", "Jawa Timur",
+            "Bali Nusra", "Kalimantan", "Sulawesi", "Puma"
+        ]
+        bar_fig = px.bar(
+            regional_counts,
+            x="Regional",
+            y="Count",
+            color="Regional",
+            color_discrete_sequence=px.colors.qualitative.Set2,
+            #title="Number of Sites per Regional",
+            text_auto=True,
+            category_orders={"Regional": custom_order}
+        )
+        # Increase text label size
+        bar_fig.update_traces(
+            textfont=dict(size=16, color="black"),
+            hoverlabel=dict(
+                font_size=16,
+                bgcolor="lightyellow",
+                font_family="Arial",
+                font_color="black"
+            )
+        )
+        bar_fig.update_layout(
+            title=dict(
+                text="Number of Sites per Regional",
+                font=dict(size=20, family="Segoe UI", color="black"),
+                x=0.0  # Center-align the title
+            ),
+            xaxis=dict(
+                title=dict(
+                    text="Regional",
+                    font=dict(size=16)  # ✅ X-axis title font size
+                ),
+                tickfont=dict(size=16)  # ✅ X-axis tick labels
+            ),
+            yaxis=dict(
+                title=dict(
+                    text="Total Sites",
+                    font=dict(size=16)  # ✅ Y-axis title font size
+                ),
+                tickfont=dict(size=14)  # ✅ Y-axis tick labels
+            ),
+            showlegend=False,
+            height=500,
+            margin=dict(t=60, b=20)
+        )
+
+        st.plotly_chart(bar_fig, use_container_width=True)
+    
+    st.markdown("---")  # horizontal divider
+
+    # New row for Site Class charts
+    class_col1, class_col2 = st.columns([1, 2])
+
+    # ----- BAR CHART: Distribution by Site Class -----
+    with class_col1:
+        site_class_counts = gdf["Site Class"].value_counts().reset_index()
+        site_class_counts.columns = ["Site Class", "Count"]
+
+        custom_order = ["Platinum", "Gold", "Silver", "Bronze"]
+
+        class_bar = px.bar(
+            site_class_counts,
+            x="Count",
+            y="Site Class",  # Horizontal bar
+            color="Site Class",
+            orientation="h",
+            text_auto=True,
+            color_discrete_sequence=px.colors.qualitative.Set2,
+            category_orders={"Site Class": custom_order}  # << Set desired order
+        )
+
+        class_bar.update_layout(
+            title="Site Distribution by Site Class",
+            title_font_size=20,
+            xaxis_title="Total Sites",
+            yaxis_title="Site Class",
+            xaxis=dict(title_font=dict(size=16), tickfont=dict(size=16)),
+            yaxis=dict(title_font=dict(size=16), tickfont=dict(size=16)),
+            showlegend=False,
+            height=500,
+            margin=dict(t=60, b=20)
+        )
+
+        class_bar.update_traces(
+            textfont=dict(size=16),
+            hoverlabel=dict(
+                font_size=16,
+                bgcolor="mintcream",
+                font_family="Arial",
+                font_color="black"
+            )
+        )
+
+        st.plotly_chart(class_bar, use_container_width=True)
+
+    # ----- STACKED BAR CHART: Site Class per Regional -----
+    with class_col2:
+        grouped = gdf.groupby(["Regional", "Site Class"]).size().reset_index(name="Count")
+
+        # Define custom order
+        regional_order = ["Sumbagteng", "Sumbagsel", "Jawa Timur", "Bali Nusra", "Kalimantan", "Sulawesi", "Puma"]
+        site_class_order = ["Bronze", "Silver", "Gold", "Platinum"]
+
+        class_stack = px.bar(
+            grouped,
+            x="Regional",
+            y="Count",
+            color="Site Class",
+            title="Site Class Distribution per Regional",
+            category_orders={
+                "Regional": regional_order,
+                "Site Class": site_class_order
+            },
+            color_discrete_sequence=px.colors.qualitative.Pastel
+        )
+
+        class_stack.update_layout(
+            barmode="stack",
+            legend_traceorder="reversed",  # Bottom to top stack order
+            xaxis_title="Regional",
+            yaxis_title="Total Sites",
+            title_font_size=20,
+            xaxis=dict(title_font=dict(size=16), tickfont=dict(size=14)),
+            yaxis=dict(title_font=dict(size=16), tickfont=dict(size=14)),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.4,
+                xanchor="right",
+                x=1,
+                font=dict(size=14)
+            ),
+            height=500,
+            margin=dict(t=60, b=80)
+        )
+        class_stack.update_traces(
+            hoverlabel=dict(
+                font_size=16,
+                bgcolor="lavender",
+                font_family="Arial",
+                font_color="black"
+            )
+        )
+
+        st.plotly_chart(class_stack, use_container_width=True)
 
 def app():
     st.title("CDC Overview Dashboard")
+
     col1, col2 = st.columns([9, 1])
     with col1:
         st.title("🎟️ CDC Overview")
     with col2:
         if st.button("🔄 Refresh Data", help="Reload data"):
             st.cache_data.clear()
+            st.session_state.pop("cdc_sites_gdf", None)  # Clear only this key
             st.rerun()
-            
-    drive = get_drive()
-    gdf = load_kml_file(drive)  # This loads the KML file into gdf
 
-    tab1, tab2 = st.tabs(["📍 Site Map", "📊 Other Tab"])
+    # Load data only if not already in session state
+    if "cdc_sites_gdf" not in st.session_state:
+        with st.spinner("Loading CDC site data..."):
+            drive = get_drive()
+            gdf = load_kml_file(drive)
+            st.session_state["cdc_sites_gdf"] = gdf
+
+    tab1, tab2 = st.tabs(["📍 Site Map", "📊 CDC Site Summary"])
 
     with tab1:
         app_tab1()
 
     with tab2:
-        st.info("Other tab content here...")
+        app_tab2()
