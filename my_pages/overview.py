@@ -328,7 +328,7 @@ def app_tab2():
             height=500,
             margin=dict(t=100, b=80),
             font=dict(size=12),  # affects all text unless overridden
-            annotations=[dict(font=dict(size=14)) for _ in class_facet.layout.annotations],
+            annotations=[dict(font=dict(size=16)) for _ in class_facet.layout.annotations],
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
