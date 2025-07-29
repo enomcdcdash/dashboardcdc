@@ -299,20 +299,18 @@ def app_tab2():
 
         st.plotly_chart(class_bar, use_container_width=True)
 
-    # ----- STACKED BAR CHART: Site Class per Regional -----
     with class_col2:
         grouped = gdf.groupby(["Regional", "Site Class"]).size().reset_index(name="Count")
 
-        # Define custom order
         regional_order = ["Sumbagteng", "Sumbagsel", "Jawa Timur", "Bali Nusra", "Kalimantan", "Sulawesi", "Puma"]
         site_class_order = ["Bronze", "Silver", "Gold", "Platinum"]
 
-        class_stack = px.bar(
+        class_facet = px.bar(
             grouped,
-            x="Regional",
+            x="Site Class",
             y="Count",
             color="Site Class",
-            title="Site Class Distribution per Regional",
+            facet_col="Regional",
             category_orders={
                 "Regional": regional_order,
                 "Site Class": site_class_order
@@ -320,26 +318,32 @@ def app_tab2():
             color_discrete_sequence=px.colors.qualitative.Pastel
         )
 
-        class_stack.update_layout(
-            barmode="stack",
-            legend_traceorder="reversed",  # Bottom to top stack order
-            xaxis_title="Regional",
-            yaxis_title="Total Sites",
-            title_font_size=20,
-            xaxis=dict(title_font=dict(size=16), tickfont=dict(size=14)),
-            yaxis=dict(title_font=dict(size=16), tickfont=dict(size=14)),
+        class_facet.update_layout(
+            title=dict(
+                text="📊 Site Class Distribution per Regional (Faceted)",
+                font=dict(size=20),
+                y=0.95,  # Keep the title near the top (0.0 = bottom, 1.0 = top)
+                yanchor="top"
+            ),
+            height=500,
+            margin=dict(t=100, b=80),
+            font=dict(size=12),  # affects all text unless overridden
+            annotations=[dict(font=dict(size=14)) for _ in class_facet.layout.annotations],
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=-0.4,
-                xanchor="right",
-                x=1,
+                y=-0.25,
+                xanchor="center",
+                x=0.5,
                 font=dict(size=14)
             ),
-            height=500,
-            margin=dict(t=60, b=80)
+            showlegend=False
         )
-        class_stack.update_traces(
+
+        class_facet.update_traces(
+            texttemplate="%{y}",
+            textposition="outside",
+            textfont_size=16,
             hoverlabel=dict(
                 font_size=16,
                 bgcolor="lavender",
@@ -347,8 +351,27 @@ def app_tab2():
                 font_color="black"
             )
         )
+        class_facet.update_xaxes(
+            tickangle=-45,
+            title=None,
+            title_font=dict(size=14),
+            tickfont=dict(size=14)
+        )
+        class_facet.update_yaxes(
+            #title="Total Sites",
+            range=[0, 32],
+            title_font=dict(size=14),
+            tickfont=dict(size=14)
+        )
+        # Adjust facet label position and text together
+        for annotation in class_facet.layout.annotations:
+            if "Regional=" in annotation.text:
+                annotation.text = annotation.text.replace("Regional=", "")
+                annotation.y += 0.03  # Adjust vertical position
+            elif annotation.text in regional_order:
+                annotation.y += 0.03  # Just adjust position if already clean
 
-        st.plotly_chart(class_stack, use_container_width=True)
+        st.plotly_chart(class_facet, use_container_width=True)
 
 def app():
     st.title("CDC Overview Dashboard")
