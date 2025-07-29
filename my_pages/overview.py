@@ -4,7 +4,8 @@ import folium
 from streamlit_folium import folium_static
 from utils.data_loader import get_drive, load_kml_file
 import folium
-from streamlit_folium import st_folium 
+from streamlit_folium import st_folium
+import plotly.graph_objects as go
 
 # Utility: define color per Regional
 def get_color(regional):
