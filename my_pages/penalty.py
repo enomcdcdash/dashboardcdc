@@ -190,7 +190,7 @@ def app_tab1():
         legend=dict(orientation="h"),
         hovermode="x unified",
         hoverlabel=dict(
-            bgcolor="white",
+            bgcolor="lightcyan",
             font_size=16,
             font_family="Arial"
         ),
