@@ -119,7 +119,8 @@ def app_tab1():
         text=summary["Achievement"],
         textposition="inside",
         insidetextanchor="start",
-        textfont=dict(size=14)
+        textfont=dict(size=16),
+        hovertemplate="Ava Achieved :</b> %{y} sites<extra></extra>"
     ))
     fig.add_trace(go.Bar(
         x=summary["Month"],
@@ -130,7 +131,8 @@ def app_tab1():
         text=summary["NotAch"],
         textposition="inside",
         insidetextanchor="start",
-        textfont=dict(size=14)
+        textfont=dict(size=16),
+        hovertemplate="Ava Not Achieved :</b> %{y} sites<extra></extra>"
     ))
 
     fig.add_trace(go.Scatter(
