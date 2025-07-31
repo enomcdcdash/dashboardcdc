@@ -155,7 +155,7 @@ def app_tab1():
         textfont=dict(size=14, color="green"),
         yaxis="y2",
         line=dict(color="orange", width=4),
-        hovertemplate='%{y:.1%}<extra>Pencapaian</extra>'
+        hovertemplate='%{y:.1%}<extra>Penalty</extra>'
     ))
 
     title = "📊 Monthly Pencapaian vs Penalty vs Achievement"
