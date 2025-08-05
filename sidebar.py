@@ -49,5 +49,8 @@ def navigation():
             st.session_state.selected_page = "Availability"
         if st.button("⚖️ Penalty Tracker", use_container_width=True):
             st.session_state.selected_page = "Penalty Tracker"
+        if st.button("⚙️ Tracker TDE Activity", use_container_width=True):
+            st.session_state.selected_page = "Tracker TDE"
         
     return st.session_state.selected_page
+
