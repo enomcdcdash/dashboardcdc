@@ -9,19 +9,16 @@ import streamlit as st
 
 @st.cache_resource
 def get_drive():
-    gauth = GoogleAuth()
+    # If running on Streamlit Cloud, use service account
+    if "google_service_account" in st.secrets:
+        return get_drive_service()
 
-    # Use OAuth client flow
-    gauth.LoadCredentialsFile("mycreds.txt")
-    if gauth.credentials is None:
-        gauth.LocalWebserverAuth()
-    elif gauth.access_token_expired:
-        gauth.Refresh()
+    # Otherwise, fallback to OAuth for local use
+    elif "google_oauth" in st.secrets and "STREAMLIT_SERVER_HEADLESS" not in os.environ:
+        return get_drive_oauth()
+
     else:
-        gauth.Authorize()
-    gauth.SaveCredentialsFile("mycreds.txt")
-
-    return GoogleDrive(gauth)
+        raise RuntimeError("No valid Google credentials found.")
 
 # --- Service Account Mode ---
 def get_drive_service():
@@ -144,4 +141,5 @@ def get_file_id_from_name1(drive, folder_id, filename):
     }).GetList()
     if not file_list:
         raise FileNotFoundError(f"{filename} not found in Google Drive folder.")
+
     return file_list[0]['id']
