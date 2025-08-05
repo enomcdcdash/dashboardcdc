@@ -65,7 +65,7 @@ oauth_scope:
 
 # === Google Drive File Utilities ===
 
-@st.cache_data(show_spinner="📥 Loading Excel from Drive...")
+@st.cache_data(show_spinner="📥 Loading Excel from Drive...", ttl=3600)
 def read_excel_from_drive(folder_id, filename):
     drive = get_drive()
     file_id = get_file_id_from_name(drive, folder_id, filename)
@@ -122,3 +122,4 @@ def get_file_id_from_name(drive, folder_id, filename):
         raise FileNotFoundError(f"File '{filename}' not found in folder '{folder_id}'")
 
     return file_list[0]["id"]
+
