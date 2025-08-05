@@ -6,3 +6,7 @@ plotly
 geopandas
 folium
 streamlit-folium
+pydrive
+xlsxwriter
+google-api-python-client
+oauth2client
