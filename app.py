@@ -20,4 +20,8 @@ elif selected_page == "Availability":
 elif selected_page == "Penalty Tracker":
     from my_pages import penalty
     penalty.app()
+elif selected_page == "Tracker TDE":
+    from my_pages import tracker_tde
+    tracker_tde.app()
+
 
