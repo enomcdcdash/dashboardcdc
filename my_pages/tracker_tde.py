@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from utils.drive_utils import get_drive, upload_file_to_drive, download_file_from_drive, read_excel_from_drive
 import io
-from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+#from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 
 # === Constants ===
 SOW_LIST = [
@@ -580,3 +580,4 @@ def app():
         app_tab2()
     with tab3:
         app_tab3()
+
