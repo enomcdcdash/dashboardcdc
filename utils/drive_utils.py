@@ -20,26 +20,30 @@ def get_drive():
     else:
         raise RuntimeError("No valid Google credentials found.")
 
-# --- Service Account Mode ---
 def get_drive_service():
+    import tempfile
+    from pydrive.auth import GoogleAuth
+    from pydrive.drive import GoogleDrive
+    import json
+
     gauth = GoogleAuth()
-    service_info = st.secrets["google_service_account"]
-    client_email = service_info["client_email"]
 
+    # Save service account credentials from Streamlit secrets to temp file
+    service_info = dict(st.secrets["google_service_account"])
     with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as f:
-        json.dump(dict(service_info), f)
-        temp_path = f.name
+        json.dump(service_info, f)
+        json_path = f.name
 
+    # Minimal settings for service auth
     gauth.settings = {
         "client_config_backend": "service",
         "service_config": {
-            "client_json_file_path": temp_path,
-            "client_user_email": client_email,
+            "client_json_file_path": json_path
         },
         "oauth_scope": [
             "https://www.googleapis.com/auth/drive",
-            "https://www.googleapis.com/auth/drive.file",
-        ],
+            "https://www.googleapis.com/auth/drive.file"
+        ]
     }
 
     gauth.ServiceAuth()
@@ -143,3 +147,4 @@ def get_file_id_from_name1(drive, folder_id, filename):
         raise FileNotFoundError(f"{filename} not found in Google Drive folder.")
 
     return file_list[0]['id']
+
