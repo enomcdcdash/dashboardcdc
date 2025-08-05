@@ -10,3 +10,4 @@ pydrive
 xlsxwriter
 google-api-python-client
 oauth2client
+st-aggrid
