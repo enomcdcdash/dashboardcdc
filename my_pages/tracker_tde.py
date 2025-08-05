@@ -525,7 +525,11 @@ def app_tab3():
         vertical-align: middle;
     }
     .custom-table th {
-        background-color: #f2f2f2;
+        background-color: #4a90e2; /* header background color */
+        color: white; /* header text color */
+    }
+    .custom-table tr:nth-child(even) {
+        background-color: #f9f9f9; /* banded rows */
     }
     .custom-table a {
         color: #1a0dab;
@@ -552,7 +556,7 @@ def app_tab3():
 
     table_html += "</tbody></table>"
 
-    # 7. Display
+    # Display in Streamlit
     st.markdown(table_html, unsafe_allow_html=True)
 
     # === Add download button ===
@@ -580,4 +584,5 @@ def app():
         app_tab2()
     with tab3:
         app_tab3()
+
 
