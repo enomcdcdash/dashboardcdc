@@ -22,7 +22,7 @@ def navigation():
         # --- Sidebar header ---
         st.markdown("""
             <div style='text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 10px;'>
-                📊 Dashboard CDC
+                📊 Dashboard CDC & TDE
             </div>
         """, unsafe_allow_html=True)
 
@@ -53,4 +53,5 @@ def navigation():
             st.session_state.selected_page = "Tracker TDE"
         
     return st.session_state.selected_page
+
 
