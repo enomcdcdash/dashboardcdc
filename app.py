@@ -2,7 +2,7 @@ import streamlit as st
 from sidebar import navigation
 from my_pages import availability, overview, tracker_bbm
 
-st.set_page_config(page_title="CDC Dashboard", layout="wide")
+st.set_page_config(page_title="Dashboard CDC & TDE", layout="wide")
 # st.write("Available secrets keys:", list(st.secrets.keys()))
 # --- Use sidebar navigation ---
 selected_page = navigation()
@@ -23,5 +23,6 @@ elif selected_page == "Penalty Tracker":
 elif selected_page == "Tracker TDE":
     from my_pages import tracker_tde
     tracker_tde.app()
+
 
 
