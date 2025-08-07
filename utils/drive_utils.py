@@ -1,6 +1,7 @@
 import os
 import json
 import tempfile
+from datetime import date
 import pandas as pd
 from io import BytesIO
 import streamlit as st
@@ -190,5 +191,6 @@ def load_kurva_s(folder_id,
     df.loc[df["Cumulative Actual"].isna(), "Percentage Actual"] = None  # <- this ensures future rows show as empty
 
     return df
+
 
 
