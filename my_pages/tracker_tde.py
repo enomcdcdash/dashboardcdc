@@ -651,9 +651,9 @@ def app_tab4():
     fig.add_annotation(
         x=today,
         y=100,
-        text="Today",
+        text=today.strftime("%d-%b-%Y"),
         showarrow=False,
-        font=dict(color="red", size=12),
+        font=dict(color="red", size=16),
         yshift=10
     )
 
@@ -676,7 +676,7 @@ def app_tab4():
             tickfont=dict(size=14),
             showgrid=False,
             tickmode="array",
-            tickvals=df["Date"]
+            tickvals = df["Date"][::7]
         ),
         yaxis=dict(
             title=dict(text="Cumulative Percentage (Plan/Actual) (%)", font=dict(size=18)), 
@@ -748,6 +748,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
