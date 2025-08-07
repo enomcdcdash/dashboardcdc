@@ -123,3 +123,72 @@ def get_file_id_from_name(drive, folder_id, filename):
 
     return file_list[0]["id"]
 
+@st.cache_data(show_spinner="📊 Processing Kurva S data...", ttl=3600)
+def load_kurva_s(folder_id, 
+                 plan_filename="Report_MS_TDE_Q3.xlsx", 
+                 plan_sheet="Kurva S",
+                 actual_filename="activity_tracker_tde.xlsx", 
+                 actual_sheet="Sheet1"):
+
+    drive = get_drive()
+
+    # --- Load Plan file ---
+    plan_file_id = get_file_id_from_name(drive, folder_id, plan_filename)
+    plan_file = drive.CreateFile({'id': plan_file_id})
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        plan_file.GetContentFile(tmp.name)
+        df_plan = pd.read_excel(tmp.name, sheet_name=plan_sheet)
+
+    # --- Clean & process plan data ---
+    df_plan["Date"] = pd.to_datetime(df_plan["Date"], errors="coerce")
+    df_plan = df_plan[["Date", "Plan"]]
+    df_plan = df_plan[df_plan["Date"].notna()]
+    df_plan["Plan"] = df_plan["Plan"].fillna(0)
+
+    # --- Ensure full daily date range ---
+    df_plan = df_plan.set_index("Date").asfreq("D").fillna(0).reset_index()
+
+    # Recalculate cumulative values
+    df_plan["Cumulative Plan"] = df_plan["Plan"].cumsum()
+    total_plan = df_plan["Cumulative Plan"].iloc[-1]
+    df_plan["Cumulative Percentage"] = (df_plan["Cumulative Plan"] / total_plan) * 100
+
+    # --- Load Actual file ---
+    actual_file_id = get_file_id_from_name(drive, folder_id, actual_filename)
+    actual_file = drive.CreateFile({'id': actual_file_id})
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        actual_file.GetContentFile(tmp.name)
+        df_actual = pd.read_excel(tmp.name, sheet_name=actual_sheet)
+
+    # --- Clean & process actual data ---
+    df_actual["Date"] = pd.to_datetime(df_actual["Date"], errors="coerce")
+    df_actual = df_actual[["Date", "Quantity"]]
+    df_actual = df_actual[df_actual["Date"].notna()]
+    df_actual = df_actual.groupby("Date", as_index=False)["Quantity"].sum()
+    df_actual = df_actual.sort_values("Date")
+    df_actual["Cumulative Actual"] = df_actual["Quantity"].cumsum()
+    # Compute % Actual from total plan
+    # total_plan = df_plan["Cumulative Plan"].iloc[-1]
+    # df_actual["Percentage Actual"] = (df_actual["Cumulative Actual"] / total_plan) * 100
+
+
+    # --- Merge actual into plan dataframe ---
+    df = pd.merge(df_plan, df_actual[["Date", "Quantity", "Cumulative Actual"]], on="Date", how="left")
+    today = pd.to_datetime(date.today())
+
+    # Only forward-fill up to today
+    mask = df["Date"] <= today
+    df.loc[mask, "Cumulative Actual"] = df.loc[mask, "Cumulative Actual"].fillna(method="ffill")
+
+    # Set values after today to None
+    df.loc[~mask, "Cumulative Actual"] = None
+
+    # Calculate % Actual only for rows where Cumulative Actual is available
+    df["Percentage Actual"] = (df["Cumulative Actual"] / total_plan) * 100
+    df.loc[df["Cumulative Actual"].isna(), "Percentage Actual"] = None  # <- this ensures future rows show as empty
+
+    return df
+
+
