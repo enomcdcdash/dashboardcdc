@@ -690,7 +690,7 @@ def app_tab4():
         # 🔽 Hover settings
         hovermode="x unified",
         hoverlabel=dict(
-            bgcolor="white",
+            bgcolor="azure",
             bordercolor="gray",
             font_size=16,
             font_family="Segoe UI"
@@ -748,6 +748,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
