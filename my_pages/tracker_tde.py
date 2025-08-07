@@ -639,6 +639,16 @@ def app_tab4():
         customdata=df_actual_until_today[["Quantity", "Cumulative Actual"]]
     ))
     
+    # 1. Get today's date
+    today = pd.to_datetime(date.today())
+
+    # 2. Find the Percentage Actual value for today (if available)
+    if today in df["Date"].values:
+        pct_today = df.loc[df["Date"] == today, "Percentage Actual"].values[0]
+    else:
+        # fallback to last available % actual
+        pct_today = df["Percentage Actual"].dropna().iloc[-1]
+
     # Vertical line for today's date
     fig.add_shape(
         type="line",
@@ -651,12 +661,14 @@ def app_tab4():
     fig.add_annotation(
         x=today,
         y=100,
-        text=today.strftime("%d-%b-%Y"),
+        text = (
+            f"<b>{today.strftime('%d-%b-%Y')}<br>"
+            f"Actual Percentage : {pct_today:.2f}%</b>"
+        ),
         showarrow=False,
-        font=dict(color="red", size=16),
+        font=dict(color="#1f77b4", size=16),
         yshift=10
     )
-
     # Get first date from df (assuming sorted)
     first_date = df["Date"].min()
     quarter = f"Q{((first_date.month - 1) // 3) + 1}"
@@ -748,6 +760,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
