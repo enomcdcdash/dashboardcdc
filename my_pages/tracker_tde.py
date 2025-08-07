@@ -573,16 +573,182 @@ def app_tab3():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+def app_tab4():
+    #st.header("📈 Kurva S Project TDE - Progress Chart")
+    tab4_title, tab4_button = st.columns([9, 1])
+    with tab4_title:
+        st.markdown("### 📈 Kurva S Project TDE - Progress Chart")
+
+    with tab4_button:
+        if st.button("🔄 Refresh Data", help="Reload data Kurva S", key="refresh_button_tab4"):
+            st.cache_data.clear()
+            st.rerun()
+
+    folder_id = EXCEL_FOLDER_ID  # 🔁 Replace with actual folder ID
+    df = load_kurva_s(folder_id)
+
+    # Ensure daily frequency, fill missing rows if any
+    df = df.set_index("Date").asfreq("D").fillna(0).reset_index()
+
+    # Recalculate cumulative values after fill
+    df["Cumulative Plan"] = df["Plan"].cumsum()
+    total_plan = df["Cumulative Plan"].iloc[-1]
+    df["Cumulative Percentage"] = (df["Cumulative Plan"] / total_plan) * 100
+
+    # Today's date for vertical line
+    today = pd.to_datetime(date.today())
+
+    # Create the plot
+    fig = go.Figure()
+
+    # Line chart for Cumulative Percentage
+    fig.add_trace(go.Scatter(
+        x=df["Date"],
+        y=df["Cumulative Percentage"],
+        mode="lines+markers",
+        name="Cumulative %",
+        text=df["Cumulative Percentage"].apply(lambda x: f"{x:.2f}%"),
+        textposition="top center",
+        marker=dict(size=8),
+        line=dict(shape="spline", width=5),
+        hovertemplate=(
+            "<b>Plan:</b> %{customdata[0]:,.0f}<br>"
+            "<b>Cumulative Plan:</b> %{customdata[1]:,.0f}<br>"
+            "<b>Cumulative Plan %:</b> %{y:.2f}%<extra></extra>"
+        ),
+        customdata=df[["Plan", "Cumulative Plan"]]
+    ))
+
+    today = pd.to_datetime("today").normalize()
+    df_actual_until_today = df[df["Date"] <= today]
+
+    fig.add_trace(go.Scatter(
+        x=df_actual_until_today["Date"],
+        y=df_actual_until_today["Percentage Actual"],
+        mode="lines+markers",
+        name="Actual %",
+        text=df_actual_until_today["Percentage Actual"].apply(lambda x: f"{x:.2f}%"),
+        textposition="top center",
+        marker=dict(size=8),
+        line=dict(shape="spline", width=5, color="orange"),
+        hovertemplate=(
+            "<b>Actual Quantity:</b> %{customdata[0]:,.0f}<br>"
+            "<b>Cumulative Actual:</b> %{customdata[1]:,.0f}<br>"
+            "<b>Actual %:</b> %{y:.2f}%<extra></extra>"
+        ),
+        customdata=df_actual_until_today[["Quantity", "Cumulative Actual"]]
+    ))
+    
+    # Vertical line for today's date
+    fig.add_shape(
+        type="line",
+        x0=today, x1=today,
+        y0=0, y1=100,
+        line=dict(color="red", dash="dot"),
+        name="Today"
+    )
+
+    fig.add_annotation(
+        x=today,
+        y=100,
+        text="Today",
+        showarrow=False,
+        font=dict(color="red", size=12),
+        yshift=10
+    )
+
+    # Get first date from df (assuming sorted)
+    first_date = df["Date"].min()
+    quarter = f"Q{((first_date.month - 1) // 3) + 1}"
+    year = first_date.year
+
+    # Layout styling
+    fig.update_layout(
+        title=dict(
+            text=f"<b style='color:#1f77b4; font-size:30px;'>Cumulative Progress (Kurva S)</b><br><span style='font-size:24px;'>({quarter} {year})</span>",
+            x=0.5,
+            xanchor="center"
+        ),
+        xaxis=dict(
+            title=dict(text="Date", font=dict(size=18)),
+            tickformat="%d-%b-%Y",
+            tickangle=-45,
+            tickfont=dict(size=14),
+            showgrid=False,
+            tickmode="array",
+            tickvals=df["Date"]
+        ),
+        yaxis=dict(
+            title=dict(text="Cumulative Percentage (Plan/Actual) (%)", font=dict(size=18)), 
+            range=[0, 110],
+            tickfont=dict(size=14),
+            showgrid=False
+        ),
+        height=600,
+        margin=dict(l=40, r=40, t=80, b=100),
+        
+        # 🔽 Hover settings
+        hovermode="x unified",
+        hoverlabel=dict(
+            bgcolor="white",
+            bordercolor="gray",
+            font_size=16,
+            font_family="Segoe UI"
+        ),
+        legend=dict(
+            font=dict(size=16),
+            orientation="h",
+            yanchor="bottom",
+            y=-0.4,
+            xanchor="right",
+            x=1
+        )
+    )
+
+    # Show the chart
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Add a horizontal separator or title (optional)
+    st.markdown("### 📋 Data Table")
+
+    # Format date and select columns
+    df_export = df.assign(Date=df["Date"].dt.strftime("%d-%b-%Y"))[
+        ["Date", "Plan", "Cumulative Plan", "Cumulative Percentage", "Quantity", "Cumulative Actual", "Percentage Actual"]
+    ]
+
+    # Expander for table
+    with st.expander("📋 Show Data Table"):
+        # Show the table
+        st.dataframe(df_export)
+    
+    # Create Excel file in memory
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df_export.to_excel(writer, index=False, sheet_name="Kurva S")
+    output.seek(0)
+
+    # Download button
+    st.download_button(
+        label="📥 Download as Excel",
+        data=output,
+        file_name="kurva_s_data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 # === Main App ===
 def app():
     st.title("⚙️ Tracker Activity TDE")
 
-    tab1, tab2, tab3 = st.tabs(["📝 Activity Form", "📈 Activity Completion Tracker", "Riwayat Aktivitas TDE"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 Activity Form", "📊 Activity Completion Tracker", "🧭 Riwayat Aktivitas TDE", "📈 Kurva-S TDE"])
     with tab1:
         app_tab1()
     with tab2:
         app_tab2()
     with tab3:
         app_tab3()
+    with tab4:
+        app_tab4()
+
+
 
 
