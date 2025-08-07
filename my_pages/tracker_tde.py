@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo  # ✅ For timezone-aware datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from utils.drive_utils import get_drive, upload_file_to_drive, download_file_from_drive, read_excel_from_drive
+from utils.drive_utils import get_drive, upload_file_to_drive, download_file_from_drive, read_excel_from_drive, load_kurva_s
 import io
 #from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 
@@ -748,6 +748,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
