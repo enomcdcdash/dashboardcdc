@@ -692,7 +692,7 @@ def app_tab4():
         hoverlabel=dict(
             bgcolor="azure",
             bordercolor="gray",
-            font_size=16,
+            font_size=20,
             font_family="Segoe UI"
         ),
         legend=dict(
@@ -748,6 +748,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
