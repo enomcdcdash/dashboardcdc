@@ -373,6 +373,142 @@ def app_tab2():
 
         st.plotly_chart(class_facet, use_container_width=True)
 
+def app_tab3():
+    st.subheader("📋 CDC Site Data Table")
+
+    gdf = st.session_state.get("cdc_sites_gdf")
+    if gdf is None or gdf.empty:
+        st.warning("Data is not available. Please refresh from Tab 1.")
+        return
+
+    # Define target columns in order
+    display_columns = ["Area", "Regional", "NS", "Site ID", "Site Name", "Site Class", "Target", "Status"]
+
+    missing_cols = [col for col in display_columns if col not in gdf.columns]
+    if missing_cols:
+        st.error(f"Missing columns in data: {missing_cols}")
+        return
+
+    df = gdf[display_columns].copy()
+
+    # ---- FONT SIZE CONTROL ----
+    font_size_map = {
+        "Small": "13px",
+        "Medium": "15px",
+        "Large": "17px",
+        "Extra Large": "20px"
+    }
+    #selected_font_size = st.selectbox("🔠 Font Size", list(font_size_map.keys()), index=1)
+    #font_size_px = font_size_map[selected_font_size]
+
+    # ---- CASCADING FILTERS ----
+    #st.markdown("### 🔍 Filter by:")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        area_options = ["All"] + sorted(df["Area"].dropna().unique())
+        selected_area = st.selectbox("Area", area_options)
+
+    filtered_df = df[df["Area"] == selected_area] if selected_area != "All" else df.copy()
+
+    with col2:
+        regional_options = ["All"] + sorted(filtered_df["Regional"].dropna().unique())
+        selected_regional = st.selectbox("Regional", regional_options)
+
+    if selected_regional != "All":
+        filtered_df = filtered_df[filtered_df["Regional"] == selected_regional]
+
+    with col3:
+        ns_options = ["All"] + sorted(filtered_df["NS"].dropna().unique())
+        selected_ns = st.selectbox("NS", ns_options)
+
+    if selected_ns != "All":
+        filtered_df = filtered_df[filtered_df["NS"] == selected_ns]
+
+    # ---- STYLED TABLE ----
+    col_title, col_font = st.columns([8, 2])
+
+    with col_title:
+        st.markdown("### 📄 Tabel Site List CDC")
+
+    with col_font:
+        selected_font_size = st.selectbox("🔠 Font Size", list(font_size_map.keys()), index=1)
+        font_size_px = font_size_map[selected_font_size]
+
+    if filtered_df.empty:
+        st.info("No data matching the selected filters.")
+        return
+
+    center_align_cols = {"Site Class", "Target", "Status"}
+
+    # Scrollable div style
+    html = f"""
+    <style>
+    .scroll-container {{
+        max-height: 500px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        margin-top: 10px;
+    }}
+    .styled-table {{
+        border-collapse: collapse;
+        width: 100%;
+        font-size: {font_size_px};
+        font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+        min-width: 900px;
+    }}
+    .styled-table th, .styled-table td {{
+        border: 1px solid #ccc;
+        padding: 8px 12px;
+    }}
+    .styled-table thead {{
+        background-color: #3f72af;
+        color: white;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }}
+    .styled-table tbody tr:nth-child(even) {{
+        background-color: #f2f2f2;
+    }}
+    .styled-table tbody tr:hover {{
+        background-color: #dbe9f4;
+    }}
+    </style>
+    """
+
+    html += '<div class="scroll-container">'
+    html += '<table class="styled-table">'
+    html += "<thead><tr>"
+    for col in display_columns:
+        html += f"<th>{col}</th>"
+    html += "</tr></thead><tbody>"
+
+    for _, row in filtered_df.iterrows():
+        html += "<tr>"
+        for col in display_columns:
+            align = "center" if col in center_align_cols else "left"
+            html += f'<td style="text-align: {align};">{row[col]}</td>'
+        html += "</tr>"
+    html += "</tbody></table></div>"
+
+    st.markdown(html, unsafe_allow_html=True)
+
+    # ---- EXPORT BUTTON ----
+    st.markdown("### 📥 Export Data Site List CDC")
+
+    to_excel = BytesIO()
+    with pd.ExcelWriter(to_excel, engine="openpyxl") as writer:
+        filtered_df.to_excel(writer, index=False, sheet_name="CDC Sites")
+    to_excel.seek(0)
+
+    st.download_button(
+        label="📤 Download Site List CDC",
+        data=to_excel,
+        file_name="Filtered_CDC_Sites.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 def app():
     st.title("CDC Overview Dashboard")
 
@@ -392,10 +528,13 @@ def app():
             gdf = load_kml_file(drive)
             st.session_state["cdc_sites_gdf"] = gdf
 
-    tab1, tab2 = st.tabs(["📍 Site Map", "📊 CDC Site Summary"])
+    tab1, tab2, tab3 = st.tabs(["📍 Site Map", "📊 CDC Site Summary", "📋 Site List CDC"])
 
     with tab1:
         app_tab1()
 
     with tab2:
         app_tab2()
+
+    with tab3:
+        app_tab3()
