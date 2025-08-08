@@ -453,8 +453,23 @@ def app_tab3():
         activity_sow["Period"] = activity_sow["Date"].dt.to_period("M").dt.start_time
         formatted_options = [d.strftime("%B - %Y") for d in activity_sow["Period"].unique()]
     elif periods == 4:  # Quarterly
-        activity_sow["Period"] = activity_sow["Date"].dt.to_period("Q").dt.start_time
-        formatted_options = [f"Q{((d.month - 1) // 3) + 1} - {d.year}" for d in activity_sow["Period"].unique()]
+        tz = activity_sow["Date"].dt.tz  # Get timezone info (could be None)
+
+        # Temporarily remove timezone only if it exists
+        date_naive = activity_sow["Date"].dt.tz_localize(None) if tz is not None else activity_sow["Date"]
+
+        # Convert to period and back to timestamp
+        period_start = date_naive.dt.to_period("Q").dt.start_time
+
+        # Reapply timezone if needed
+        if tz is not None:
+            activity_sow["Period"] = period_start.dt.tz_localize(tz)
+        else:
+            activity_sow["Period"] = period_start
+
+        formatted_options = [
+            f"Q{((d.month - 1) // 3) + 1} - {d.year}" for d in activity_sow["Period"].unique()
+        ]
     elif periods == 2:  # Semiannual
         activity_sow["Period"] = activity_sow["Date"].apply(lambda d: datetime(d.year, 1 if d.month <= 6 else 7, 1, tzinfo=tz))
         formatted_options = [f"Semester {2 if d.month >= 7 else 1} - {d.year}" for d in activity_sow["Period"].unique()]
@@ -760,6 +775,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
