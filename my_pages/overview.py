@@ -7,6 +7,7 @@ import folium
 from streamlit_folium import st_folium
 import plotly.graph_objects as go
 import plotly.express as px
+from io import BytesIO
 
 # Utility: define color per Regional
 def get_color(regional):
@@ -538,3 +539,4 @@ def app():
 
     with tab3:
         app_tab3()
+
