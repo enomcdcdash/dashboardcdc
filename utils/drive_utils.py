@@ -181,7 +181,7 @@ def load_kurva_s(folder_id,
 
     # Only forward-fill up to today
     mask = df["Date"] <= today
-    df.loc[mask, "Cumulative Actual"] = df.loc[mask, "Cumulative Actual"].fillna(method="ffill")
+    df.loc[mask, "Cumulative Actual"] = df.loc[mask, "Cumulative Actual"].ffill()
 
     # Set values after today to None
     df.loc[~mask, "Cumulative Actual"] = None
@@ -191,6 +191,7 @@ def load_kurva_s(folder_id,
     df.loc[df["Cumulative Actual"].isna(), "Percentage Actual"] = None  # <- this ensures future rows show as empty
 
     return df
+
 
 
 
