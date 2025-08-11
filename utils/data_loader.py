@@ -352,3 +352,74 @@ def load_bbm_tracker_data(drive, site_file, bbm_file, folder_id):
     df.insert(0, 'No.', range(1, len(df) + 1))
 
     return df
+
+@st.cache_data(ttl=3600)
+def load_availability_vs_penalty_data():
+    drive = get_drive()
+    files = find_excel_files(drive, prefix="availability_vs_penalty")
+    
+    if not files:
+        st.warning("No availability_vs_penalty files found in Google Drive.")
+        return pd.DataFrame()
+
+    file = files[0]
+    month_sheets_expected = [
+        "JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI",
+        "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"
+    ]
+    month_sheets_expected = [m.strip().upper() for m in month_sheets_expected]
+
+    try:
+        file_obj = drive.CreateFile({'id': file['id']})
+        content = file_obj.GetContentString(encoding='ISO-8859-1')
+        xls = pd.ExcelFile(io.BytesIO(content.encode('ISO-8859-1')))
+    except Exception as e:
+        st.warning(f"Failed to load Excel file {file['title']}: {e}")
+        return pd.DataFrame()
+
+    sheet_names_in_file = [s.strip().upper() for s in xls.sheet_names]
+
+    dfs = []
+    for expected_sheet in month_sheets_expected:
+        if expected_sheet in sheet_names_in_file:
+            idx = sheet_names_in_file.index(expected_sheet)
+            actual_sheet_name = xls.sheet_names[idx]
+            try:
+                df = pd.read_excel(xls, sheet_name=actual_sheet_name, header=1)
+
+                required_cols = [
+                    "No", "Regional TI", "Site Id", "Site Name", "Daya PO",
+                    "Periode Tagihan (Awal)", "Periode Tagihan (Akhir)", "Jumlah Periode (Bulan)",
+                    "Nominal PO", "Index BBM", "Class Site", "Target Availability (%)",
+                    "Availability", "Persentase Penalty", "Nilai Penalty", "Nilai BAST",
+                    "Nilai BAST dikurangi Penalty"
+                ]
+                cols_to_use = [col for col in required_cols if col in df.columns]
+                df = df[cols_to_use].copy()
+
+                # Convert Periode Tagihan columns to datetime, errors='coerce' to handle bad formats
+                df["Periode Tagihan (Awal)"] = pd.to_datetime(df["Periode Tagihan (Awal)"], errors='coerce')
+                df["Periode Tagihan (Akhir)"] = pd.to_datetime(df["Periode Tagihan (Akhir)"], errors='coerce')
+
+                # Add Month and Year columns from "Periode Tagihan (Awal)"
+                df["Month"] = df["Periode Tagihan (Awal)"].dt.month_name()
+                df["Year"] = df["Periode Tagihan (Awal)"].dt.year
+
+                # Format the Periode Tagihan dates as "01-Monthname-Year"
+                df["Periode Tagihan (Awal)"] = df["Periode Tagihan (Awal)"].dt.strftime("%d-%B-%Y")
+                df["Periode Tagihan (Akhir)"] = df["Periode Tagihan (Akhir)"].dt.strftime("%d-%B-%Y")
+
+                dfs.append(df)
+            except Exception as e:
+                st.warning(f"Failed to read sheet '{actual_sheet_name}' in {file['title']}: {e}")
+        else:
+            #st.warning(f"Sheet '{expected_sheet}' not found in {file['title']}")
+            pass
+
+    if not dfs:
+        st.warning("No valid sheets loaded.")
+        return pd.DataFrame()
+
+    combined_df = pd.concat(dfs, ignore_index=True)
+    return combined_df
+
