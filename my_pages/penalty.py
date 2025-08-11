@@ -323,33 +323,43 @@ def app_tab1():
     if "Not Achieved" not in status_counts.columns:
         status_counts["Not Achieved"] = 0
 
-    # Prepare main title text
     main_title = "Availability vs. Penalty"
 
-    # Prepare info line based on selections
-    if len(selected_area) == 1 and not selected_regional and not selected_site:
-        # Only Area selected
-        info_line = f"Area: <b>{selected_area[0]}</b>"
-    elif len(selected_regional) == 1 and not selected_site:
-        # Regional selected
-        info_line = f"Area: <b>{selected_area[0]}</b> | Regional: <b>{selected_regional[0]}</b>"
-    elif len(selected_site) == 1:
-        # One Site selected: get Site ID, Regional, Site Class from last month
-        site_id = selected_site[0]
-        last_month = filtered_df["Month-Year"].max()
-        last_month_data = filtered_df[(filtered_df["Site Id"] == site_id) & (filtered_df["Month-Year"] == last_month)]
-        if not last_month_data.empty:
-            site_class = last_month_data.iloc[0].get("Class Site", "Unknown")
-            regional = last_month_data.iloc[0].get("Regional", "Unknown")
+    # Default info_line
+    info_line = ""
+
+    # Create a combined Month-Year column in "YYYY-MM" format (string)
+    df['Month-Year'] = df['Year'].astype(str) + '-' + df['Month'].astype(str).str.zfill(2)
+    # Helper: get latest month available in df (or filtered_df)
+    latest_month = df["Month-Year"].max()
+
+    if selected_site != "All":
+        # One Site selected - show Site Id + Class Site + Site Name from latest month
+        site_id = selected_site
+        # Filter for latest month and selected site
+        latest_site_data = df[(df["Site Id"] == site_id) & (df["Month-Year"] == latest_month)]
+        if not latest_site_data.empty:
+            site_class = latest_site_data.iloc[0].get("Class Site", "Unknown")
+            site_name = latest_site_data.iloc[0].get("Site Name", "Unknown")
             info_line = (
                 f"Site ID: <b style='color:green'>{site_id}</b> | "
-                f"Regional: <b style='color:green'>{regional}</b> | "
+                f"Site Name: <b style='color:green'>{site_name}</b> | "
                 f"Site Class: <b style='color:green'>{site_class}</b>"
             )
         else:
             info_line = f"Site ID: <b>{site_id}</b>"
+
+    elif selected_regional != "All":
+        # One Regional selected - show Area and Regional info
+        # We assume selected_area still holds the Area for this Regional
+        info_line = f"Area: <b>{selected_area}</b> | Regional: <b>{selected_regional}</b>"
+
+    elif selected_area != "All":
+        # One Area selected - show Area info only
+        info_line = f"Area: <b>{selected_area}</b>"
+
     else:
-        # Multiple selections or no selection fallback
+        # Default fallback for multiple or no specific selection
         info_line = "Multiple selections"
 
     fig = go.Figure()
@@ -436,7 +446,7 @@ def app_tab1():
 
     fig.update_layout(
         title=dict(
-            text=f"<b>{main_title}</b>",
+            text=f"<b>{main_title}</b><br><span style='font-size:16px; color:gray'>{info_line}</span>",
             font=dict(size=28, color='black'),
             x=0.5,
             xanchor='center',
@@ -544,4 +554,5 @@ def app():
 
     with tab2:
         app_tab2()
+
 
