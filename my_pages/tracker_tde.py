@@ -551,7 +551,7 @@ def app_tab3():
         unsafe_allow_html=True,
     )
 
-    st.markdown("### 📋 Tabel Riwayat Activity TDE dengan opsi hapus")
+    st.markdown("### 📋 Riwayat Activity TDE")
 
     header_cols = st.columns([2, 2, 1, 1, 1, 1, 1, 1])
     headers = list(filtered_df.columns) + ["Actions"]
@@ -814,6 +814,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
