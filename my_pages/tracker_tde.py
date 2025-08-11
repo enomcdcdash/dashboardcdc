@@ -412,14 +412,12 @@ def app_tab3():
         activity_df["Date"] = activity_df["Date"].dt.tz_localize(tz, ambiguous="NaT", nonexistent="NaT")
     activity_df["Date"] = activity_df["Date"].dt.normalize()
 
-    # === Filter setup ===
     col1, col2 = st.columns(2)
 
     with col1:
         sow_options = ["All"] + sow_df["SOW"].unique().tolist()
         selected_sow = st.selectbox("📌 Pilih SOW", sow_options)
 
-    # Handle All option
     if selected_sow == "All":
         activity_sow = activity_df.copy()
         unique_periods = activity_sow["SOW"].map(sow_df.set_index("SOW")["Periods"])
@@ -441,11 +439,9 @@ def app_tab3():
     activity_sow = activity_sow.sort_values("Date")
     activity_sow["Date"] = activity_sow["Date"].dt.normalize()
 
-    # Determine periods dynamically if "All" is selected
     if selected_sow == "All":
         periods = unique_periods.mode().iloc[0] if not unique_periods.empty else 12
 
-    # Create Period column & display options based on period type
     if periods == 48:  # Weekly
         activity_sow["Period"] = activity_sow["Date"].dt.to_period("W").dt.start_time
         formatted_options = [f"W{d.isocalendar().week:02d} - {d.year}" for d in activity_sow["Period"].unique()]
@@ -453,23 +449,14 @@ def app_tab3():
         activity_sow["Period"] = activity_sow["Date"].dt.to_period("M").dt.start_time
         formatted_options = [d.strftime("%B - %Y") for d in activity_sow["Period"].unique()]
     elif periods == 4:  # Quarterly
-        tz = activity_sow["Date"].dt.tz  # Get timezone info (could be None)
-
-        # Temporarily remove timezone only if it exists
+        tz = activity_sow["Date"].dt.tz
         date_naive = activity_sow["Date"].dt.tz_localize(None) if tz is not None else activity_sow["Date"]
-
-        # Convert to period and back to timestamp
         period_start = date_naive.dt.to_period("Q").dt.start_time
-
-        # Reapply timezone if needed
         if tz is not None:
             activity_sow["Period"] = period_start.dt.tz_localize(tz)
         else:
             activity_sow["Period"] = period_start
-
-        formatted_options = [
-            f"Q{((d.month - 1) // 3) + 1} - {d.year}" for d in activity_sow["Period"].unique()
-        ]
+        formatted_options = [f"Q{((d.month - 1) // 3) + 1} - {d.year}" for d in activity_sow["Period"].unique()]
     elif periods == 2:  # Semiannual
         activity_sow["Period"] = activity_sow["Date"].apply(lambda d: datetime(d.year, 1 if d.month <= 6 else 7, 1, tzinfo=tz))
         formatted_options = [f"Semester {2 if d.month >= 7 else 1} - {d.year}" for d in activity_sow["Period"].unique()]
@@ -477,7 +464,6 @@ def app_tab3():
         activity_sow["Period"] = activity_sow["Date"].min()
         formatted_options = [activity_sow["Period"].iloc[0].strftime("%d-%B-%Y")]
 
-    # Add "All" to period options if SOW is All
     if selected_sow == "All":
         formatted_options = ["All"] + formatted_options
         formatted_to_actual = {opt: val for opt, val in zip(formatted_options[1:], activity_sow["Period"].unique())}
@@ -487,7 +473,6 @@ def app_tab3():
     with col2:
         selected_formatted = st.selectbox("📅 Pilih Periode", formatted_options, key="periode_selectbox_tab3")
 
-    # Filter logic
     if selected_formatted == "All":
         filtered_df = activity_sow.copy()
     else:
@@ -498,96 +483,147 @@ def app_tab3():
         st.info("Tidak ada aktivitas pada periode ini.")
         return
 
-    # Show summary table
-    st.markdown("### 📋 Tabel Riwayat Acitivty TDE")  
-
-    # 1. Convert Date to datetime format
     filtered_df["Date"] = pd.to_datetime(filtered_df["Date"], errors="coerce")
+    filtered_df["Date"] = filtered_df["Date"].dt.normalize()
 
-    # 2. Sort by datetime, descending (newest first)
+    filtered_df = filtered_df.sort_values(["SOW", "Date"])
+    filtered_df["Cumulative"] = filtered_df.groupby("SOW")["Quantity"].cumsum()
     filtered_df = filtered_df.sort_values("Date", ascending=False)
-
-    # 3. Reformat date for display AFTER sorting
     filtered_df["Date_display"] = filtered_df["Date"].dt.strftime("%d-%B-%Y")
 
-    # 4. Build Evidence columns with 'Lihat' links
     for col in ["Evidence 1", "Evidence 2", "Evidence 3"]:
         if col in filtered_df.columns:
             filtered_df[col] = filtered_df[col].fillna("").apply(
                 lambda x: f'<a href="{x}" target="_blank">Lihat</a>' if x.strip() != "" else ""
             )
 
-    # 5. Select columns to show — use 'Date_display' instead of raw datetime
-    display_columns = ["Date_display", "SOW", "Quantity", "Evidence 1", "Evidence 2", "Evidence 3"]
+    display_columns = ["Date_display", "SOW", "Quantity", "Cumulative", "Evidence 1", "Evidence 2", "Evidence 3"]
     filtered_df = filtered_df[[col for col in display_columns if col in filtered_df.columns]]
-
-    # Optional: Rename 'Date_display' column to just 'Date' for prettier header
     filtered_df = filtered_df.rename(columns={"Date_display": "Date"})
-    existing_columns = filtered_df.columns.tolist()
 
-    # 6. Build HTML table manually
-    table_html = """
-    <style>
-    .custom-table {
-        border-collapse: collapse;
-        width: 100%;
-        font-size: 18px;
-    }
-    .custom-table th, .custom-table td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: center;
-        vertical-align: middle;
-    }
-    .custom-table th {
-        background-color: #4a90e2; /* header background color */
-        color: white; /* header text color */
-    }
-    .custom-table tr:nth-child(even) {
-        background-color: #f9f9f9; /* banded rows */
-    }
-    .custom-table a {
-        color: #1a0dab;
-        text-decoration: none;
-        font-weight: bold;
-    }
-    </style>
-    <table class="custom-table">
-    <thead>
-    <tr>
-    """
+    st.markdown(
+        """
+        <style>
+        .scroll-table {
+            max-height: 450px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #fafafa;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .header-cell {
+            font-weight: bold;
+            background-color: #4a90e2;
+            color: white;
+            text-align: center;
+            padding: 10px 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .table-cell {
+            padding: 8px 5px;
+            border: 1px solid #ddd;
+            vertical-align: middle;
+            font-size: 14px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .highlight-cell {
+            font-size: 20px;
+            font-weight: 600;
+            text-align: center !important;
+        }
+        .table-cell a {
+            color: #1a0dab;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .table-cell a:hover {
+            text-decoration: underline;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    # Add headers
-    for col in existing_columns:
-        table_html += f"<th>{col}</th>"
-    table_html += "</tr></thead><tbody>"
+    st.markdown("### 📋 Tabel Riwayat Activity TDE dengan opsi hapus")
 
-    # Add rows (DON'T sort again!)
-    for _, row in filtered_df.iterrows():
-        table_html += "<tr>"
-        for cell in row:
-            table_html += f"<td>{cell}</td>"
-        table_html += "</tr>"
+    header_cols = st.columns([2, 2, 1, 1, 1, 1, 1, 1])
+    headers = list(filtered_df.columns) + ["Actions"]
+    for col_obj, header in zip(header_cols, headers):
+        col_obj.markdown(f'<div class="header-cell">{header}</div>', unsafe_allow_html=True)
 
-    table_html += "</tbody></table>"
+    container = st.container()
+    rows_to_delete = []
 
-    # Display in Streamlit
-    st.markdown(table_html, unsafe_allow_html=True)
+    with container:
+        st.markdown('<div class="scroll-table">', unsafe_allow_html=True)
 
-    # === Add download button ===
+        for i, row in filtered_df.iterrows():
+            cols = st.columns([2, 2, 1, 1, 1, 1, 1, 1])
+
+            cols[0].markdown(f'<div class="table-cell highlight-cell">{row["Date"]}</div>', unsafe_allow_html=True)
+            cols[1].markdown(f'<div class="table-cell highlight-cell">{row["SOW"]}</div>', unsafe_allow_html=True)
+
+            cols[2].markdown(f'<div class="table-cell highlight-cell">{row["Quantity"]}</div>', unsafe_allow_html=True)
+            cols[3].markdown(f'<div class="table-cell highlight-cell">{row["Cumulative"]}</div>', unsafe_allow_html=True)
+
+            for j, ev_col in enumerate(["Evidence 1", "Evidence 2", "Evidence 3"]):
+                if ev_col in filtered_df.columns:
+                    html_link = row.get(ev_col, "")
+                    if html_link:
+                        cols[4 + j].markdown(f'<div class="table-cell">{html_link}</div>', unsafe_allow_html=True)
+                    else:
+                        cols[4 + j].markdown(f'<div class="table-cell">&nbsp;</div>', unsafe_allow_html=True)
+
+            with cols[7]:
+                if st.button("Delete", key=f"delete_{i}"):
+                    rows_to_delete.append(i)
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
     if not filtered_df.empty:
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-            filtered_df.to_excel(writer, index=False, sheet_name="Filtered Data")
+            # Remove timezone info before saving
+            df_to_save = filtered_df.copy()
+            for col in df_to_save.columns:
+                if pd.api.types.is_datetime64_any_dtype(df_to_save[col]):
+                    df_to_save[col] = df_to_save[col].dt.tz_localize(None)
+            df_to_save.to_excel(writer, index=False, sheet_name="Sheet1")
         buffer.seek(0)
 
         st.download_button(
-            label="📥 Download Activity History Data",
+            label="📥 Download Filtered Activity Data",
             data=buffer,
-            file_name="riwayat_activity_tde.xlsx",
+            file_name="filtered_activity_tde.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+    if rows_to_delete:
+        updated_df = activity_df.drop(rows_to_delete)
+        for col in updated_df.columns:
+            if pd.api.types.is_datetime64_any_dtype(updated_df[col]):
+                updated_df[col] = updated_df[col].dt.tz_localize(None)
+
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            updated_df.to_excel(writer, index=False, sheet_name="Sheet1")
+        buffer.seek(0)
+
+        upload_file_to_drive(buffer, EXCEL_FOLDER_ID, EXCEL_FILE_NAME)
+
+        try:
+            st.toast(f"Deleted {len(rows_to_delete)} row(s) successfully!")
+        except AttributeError:
+            placeholder = st.empty()
+            placeholder.success(f"Deleted {len(rows_to_delete)} row(s) successfully!")
+            time.sleep(3)
+            placeholder.empty()
+
+        st.rerun()
 def app_tab4():
     #st.header("📈 Kurva S Project TDE - Progress Chart")
     tab4_title, tab4_button = st.columns([9, 1])
@@ -775,6 +811,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
