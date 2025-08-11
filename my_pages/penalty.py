@@ -465,16 +465,16 @@ def app_tab1():
         ),
         
         yaxis3=dict(
-            title="Count of Status",
-            overlaying="y",
-            side="right",
-            position=1.00,
-            anchor="x",
-            showgrid=False,
-            tickfont=dict(size=14),
-            zeroline=False,
-            rangemode="tozero",
-            # Automatically adjust range to counts (optional)
+            showline=False,    # Hide the axis line
+            showticklabels=False,  # Hide tick labels
+            showgrid=False,    # Hide grid lines
+            zeroline=False,    # Hide zero line if any
+            title='',          # Remove axis title
+            overlaying='y',
+            side='right',
+            position=0.95,
+            anchor='x',
+            rangemode='tozero',
         ),
         legend=dict(
             x=1,           # x=1 means right edge of the plotting area
@@ -544,3 +544,4 @@ def app():
 
     with tab2:
         app_tab2()
+
