@@ -1,10 +1,14 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.data_loader import get_drive, load_penalty_data
+import plotly.express as px
+from utils.data_loader import get_drive, load_penalty_data, load_availability_vs_penalty_data
+from io import BytesIO
+import io
+from plotly.subplots import make_subplots
 
-def app_tab1():
-    st.subheader("📌 Penalty Tracker - Tab 1")
+def app_tab2():
+    st.subheader("📌 Penalty Tracker")
 
     # --- Load and flatten data ---
     raw_df = load_penalty_data()
@@ -119,7 +123,7 @@ def app_tab1():
         text=summary["Achievement"],
         textposition="inside",
         insidetextanchor="start",
-        textfont=dict(size=16),
+        textfont=dict(size=14),
         hovertemplate="Ava Achieved :</b> %{y} sites<extra></extra>"
     ))
     fig.add_trace(go.Bar(
@@ -131,7 +135,7 @@ def app_tab1():
         text=summary["NotAch"],
         textposition="inside",
         insidetextanchor="start",
-        textfont=dict(size=16),
+        textfont=dict(size=14),
         hovertemplate="Ava Not Achieved :</b> %{y} sites<extra></extra>"
     ))
 
@@ -214,7 +218,310 @@ def app_tab1():
 
         st.dataframe(display_df, use_container_width=True)
 
+def app_tab1():
+    st.markdown("## Availability vs Penalty Data")
+    
+    df = load_availability_vs_penalty_data()
+    if df.empty:
+        st.warning("No data to display.")
+        return
 
+    # Define Area to Regional TI mapping
+    area_to_regional = {
+        "Area 1": ["Sumbagsel", "Sumbagteng"],
+        "Area 3": ["Balnus", "Jatim"],
+        "Area 4": ["Kalimantan", "Puma", "Sulawesi"]
+    }
+
+    # 1. Create filters in one row
+    col_area, col_regional, col_site = st.columns([3, 3, 3])
+
+    # Area filter
+    area_options = ["All"] + list(area_to_regional.keys())
+    selected_area = col_area.selectbox("Select Area", area_options, index=0)
+
+    # Filter Regional TI options based on Area selection
+    if selected_area == "All":
+        regional_options = ["All"] + sorted(df["Regional TI"].dropna().unique().tolist())
+    else:
+        regional_options = ["All"] + area_to_regional.get(selected_area, [])
+
+    selected_regional = col_regional.selectbox("Select Regional TI", regional_options, index=0)
+
+    # Filter Site Id options based on Regional TI selection
+    if selected_regional == "All":
+        if selected_area == "All":
+            site_options = ["All"] + sorted(df["Site Id"].dropna().unique().tolist())
+        else:
+            # Sites within Area's Regional TIs
+            sites_in_area = df[df["Regional TI"].isin(area_to_regional[selected_area])]["Site Id"].unique().tolist()
+            site_options = ["All"] + sorted(sites_in_area)
+    else:
+        # Sites within selected Regional TI
+        sites_in_regional = df[df["Regional TI"] == selected_regional]["Site Id"].unique().tolist()
+        site_options = ["All"] + sorted(sites_in_regional)
+
+    selected_site = col_site.selectbox("Select Site Id", site_options, index=0)
+
+    # 2. Filter DataFrame based on selections
+    filtered_df = df.copy()
+
+    if selected_area != "All":
+        filtered_df = filtered_df[filtered_df["Regional TI"].isin(area_to_regional[selected_area])]
+
+    if selected_regional != "All":
+        filtered_df = filtered_df[filtered_df["Regional TI"] == selected_regional]
+
+    if selected_site != "All":
+        filtered_df = filtered_df[filtered_df["Site Id"] == selected_site]
+
+    if filtered_df.empty:
+        st.warning("No data for the selected filters.")
+        return
+
+    # Prepare data for plotting
+    # Create Month-Year string for x-axis, e.g. "January-2025"
+    filtered_df["Month-Year"] = filtered_df.apply(lambda r: f"{r['Month']}-{r['Year']}", axis=1)
+
+    # Sort by Year and Month order to make line chart smooth
+    filtered_df["Month_Num"] = pd.to_datetime(filtered_df["Month-Year"], format="%B-%Y").dt.month
+    filtered_df = filtered_df.sort_values(by=["Year", "Month_Num"])
+
+    #import plotly.graph_objects as go
+
+    x_vals = filtered_df["Month-Year"].unique()
+
+    # Step 1: Add Status column for each row in original data (not aggregated)
+    filtered_df["Status"] = filtered_df.apply(
+        lambda row: "Achieved" if row["Availability"] >= row["Target Availability (%)"] else "Not Achieved",
+        axis=1
+    )
+
+    # Step 2: Aggregate for lines (mean/sum)
+    agg_df = filtered_df.groupby("Month-Year").agg({
+        "Availability": "mean",
+        "Target Availability (%)": "mean",
+        "Persentase Penalty": "mean",
+        "Nilai Penalty": "sum"
+    }).reindex(x_vals)
+
+    agg_df["Availability_fmt"] = agg_df["Availability"].map(lambda x: f"{x*100:.2f}%")
+    agg_df["Target_Availability_fmt"] = agg_df["Target Availability (%)"].map(lambda x: f"{x*100:.2f}%")
+    agg_df["Persentase_Penalty_fmt"] = agg_df["Persentase Penalty"].map(lambda x: f"{x*100:.2f}%")
+    agg_df["Nilai_Penalty_fmt"] = agg_df["Nilai Penalty"].map(lambda x: f"Rp {int(x):,}".replace(",", "."))
+
+    agg_df["Availability_pct"] = agg_df["Availability"] * 100
+    agg_df["Target_Availability_pct"] = agg_df["Target Availability (%)"] * 100
+    agg_df["Persentase_Penalty_pct"] = agg_df["Persentase Penalty"] * 100
+
+    # Step 3: Count Achieved and Not Achieved per Month-Year
+    status_counts = filtered_df.groupby(["Month-Year", "Status"]).size().unstack(fill_value=0).reindex(x_vals, fill_value=0)
+
+    # Make sure columns exist even if some are missing
+    if "Achieved" not in status_counts.columns:
+        status_counts["Achieved"] = 0
+    if "Not Achieved" not in status_counts.columns:
+        status_counts["Not Achieved"] = 0
+
+    # Prepare main title text
+    main_title = "Availability vs. Penalty"
+
+    # Prepare info line based on selections
+    if len(selected_area) == 1 and not selected_regional and not selected_site:
+        # Only Area selected
+        info_line = f"Area: <b>{selected_area[0]}</b>"
+    elif len(selected_regional) == 1 and not selected_site:
+        # Regional selected
+        info_line = f"Area: <b>{selected_area[0]}</b> | Regional: <b>{selected_regional[0]}</b>"
+    elif len(selected_site) == 1:
+        # One Site selected: get Site ID, Regional, Site Class from last month
+        site_id = selected_site[0]
+        last_month = filtered_df["Month-Year"].max()
+        last_month_data = filtered_df[(filtered_df["Site Id"] == site_id) & (filtered_df["Month-Year"] == last_month)]
+        if not last_month_data.empty:
+            site_class = last_month_data.iloc[0].get("Class Site", "Unknown")
+            regional = last_month_data.iloc[0].get("Regional", "Unknown")
+            info_line = (
+                f"Site ID: <b style='color:green'>{site_id}</b> | "
+                f"Regional: <b style='color:green'>{regional}</b> | "
+                f"Site Class: <b style='color:green'>{site_class}</b>"
+            )
+        else:
+            info_line = f"Site ID: <b>{site_id}</b>"
+    else:
+        # Multiple selections or no selection fallback
+        info_line = "Multiple selections"
+
+    fig = go.Figure()
+
+    # Add stacked bar chart for counts on new yaxis 'y3'
+    fig.add_trace(go.Bar(
+        x=status_counts.index,
+        y=status_counts["Achieved"],
+        name="Achieved",
+        marker_color="lightblue",
+        yaxis="y3",
+        opacity=0.3,
+        text=status_counts["Achieved"],        # Add labels showing the count
+        textposition='inside',                  # Position text inside the bar
+        insidetextanchor='start',
+        textfont=dict(size=14, color="black"),
+        hovertemplate="Ava Achieved :</b> %{y} sites<extra></extra>"
+    ))
+
+    fig.add_trace(go.Bar(
+        x=status_counts.index,
+        y=status_counts["Not Achieved"],
+        name="Not Achieved",
+        marker_color="beige",
+        yaxis="y3",
+        opacity=0.3,
+        #text=status_counts["Not Achieved"],
+        #textposition='inside',
+        #insidetextanchor='start',
+        #textfont=dict(size=14, color="black"),
+        hovertemplate="Ava Not Achieved :</b> %{y} sites<extra></extra>"
+    ))
+
+    # Add line traces with labels
+    fig.add_trace(go.Scatter(
+        x=agg_df.index,
+        y=agg_df["Availability_pct"],
+        mode='lines+markers+text',
+        name="Availability",
+        line=dict(color='blue', width=4),
+        text=agg_df["Availability_fmt"],
+        textposition='top center',
+        textfont=dict(color='blue', size=16),
+        hovertemplate='Availability: %{customdata[0]}<extra></extra>',
+        customdata=agg_df[["Availability_fmt"]]
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=agg_df.index,
+        y=agg_df["Target_Availability_pct"],
+        mode='lines+markers',
+        name="Target Availability (%)",
+        line=dict(color='darkgreen', dash='dash', width=6),
+        hovertemplate='Target Availability: %{customdata[0]}<extra></extra>',
+        customdata=agg_df[["Target_Availability_fmt"]]
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=agg_df.index,
+        y=agg_df["Persentase_Penalty_pct"],
+        mode='lines+markers+text',
+        name="Persentase Penalty",
+        line=dict(color='red', width=4),
+        text=agg_df["Persentase_Penalty_fmt"],
+        textposition='top center',
+        textfont=dict(color='red', size=16),
+        hovertemplate='Persentase Penalty: %{customdata[0]}<extra></extra>',
+        customdata=agg_df[["Persentase_Penalty_fmt"]]
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=agg_df.index,
+        y=agg_df["Nilai Penalty"],
+        mode='lines+markers+text',
+        name="Nilai Penalty",
+        yaxis='y2',
+        line=dict(color='orange', width=4),
+        text=agg_df["Nilai_Penalty_fmt"],
+        textposition='top center',
+        textfont=dict(color='black', size=16),
+        hovertemplate='Nilai Penalty: %{customdata[0]}<extra></extra>',
+        customdata=agg_df[["Nilai_Penalty_fmt"]]
+    ))
+
+    fig.update_layout(
+        title=dict(
+            text=f"<b>{main_title}</b>",
+            font=dict(size=28, color='black'),
+            x=0.5,
+            xanchor='center',
+            y=0.95,
+            yanchor='top'
+        ),
+        barmode="stack",
+        xaxis_title="Month-Year",
+        xaxis=dict(
+            tickfont=dict(size=16),
+            tickangle=-45,
+        ),
+        yaxis=dict(
+            title="Percentage / Availability",
+            range=[0, 110],
+            tickformat=".0f",
+            tickfont=dict(size=16),
+            showgrid=False,
+        ),
+        yaxis2=dict(
+            title="Nilai Penalty",
+            overlaying="y",
+            side="right",
+            showgrid=False,
+            tickfont=dict(size=16)
+        ),
+        
+        yaxis3=dict(
+            title="Count of Status",
+            overlaying="y",
+            side="right",
+            position=1.00,
+            anchor="x",
+            showgrid=False,
+            tickfont=dict(size=14),
+            zeroline=False,
+            rangemode="tozero",
+            # Automatically adjust range to counts (optional)
+        ),
+        legend=dict(
+            x=1,           # x=1 means right edge of the plotting area
+            y=-0.4,           # y=0 means bottom of the plotting area
+            xanchor='right',  # anchor the legend's right side at x=1
+            yanchor='bottom', # anchor the legend's bottom at y=0
+            orientation='h',  # horizontal legend
+            bgcolor='rgba(255,255,255,0.5)',  # optional: semi-transparent background for better readability
+            bordercolor='black',               # optional border color
+            borderwidth=1
+        ),
+        hovermode='x unified',
+        hoverlabel=dict(
+            bgcolor="azure",
+            font_size=16,
+            font_family="Arial",
+            font_color="black",
+            bordercolor="gray",
+            namelength=-1,
+        ),
+        height=700,
+        margin=dict(l=40, r=60, t=80, b=80)
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("📋 Show Filtered Data Table"):
+        if df.empty:
+            st.warning("No data available to display.")
+        else:
+            # Show dataframe with default Streamlit table
+            st.dataframe(filtered_df, use_container_width=True)
+    
+    # Create a BytesIO buffer
+    buffer = io.BytesIO()
+
+    # Save filtered_df to this buffer as Excel
+    filtered_df.to_excel(buffer, index=False)
+    buffer.seek(0)
+
+    # Add a download button
+    st.download_button(
+        label="📥 Download Data",
+        data=buffer,
+        file_name="filtered_data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 # --- Main App Entry ---
 def app():
@@ -231,6 +538,9 @@ def app():
     if df_raw.empty:
         return
 
-    tab1, tab2 = st.tabs(["📌 Penalty Tracker", "📊 Tab 2 (Coming Soon)"])
+    tab1, tab2 = st.tabs(["📉 Availability vs Penalty Tracker", "📌 Penalty Tracker"])
     with tab1:
         app_tab1()
+
+    with tab2:
+        app_tab2()
