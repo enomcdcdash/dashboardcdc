@@ -543,6 +543,9 @@ def app_tab3():
         .table-cell a:hover {
             text-decoration: underline;
         }
+        div.stButton > button {
+            width: 100%;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -811,6 +814,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
