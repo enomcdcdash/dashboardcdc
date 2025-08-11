@@ -506,7 +506,7 @@ def app_tab1():
             namelength=-1,
         ),
         height=700,
-        margin=dict(l=40, r=60, t=80, b=80)
+        margin=dict(l=40, r=60, t=100, b=80)
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -554,5 +554,6 @@ def app():
 
     with tab2:
         app_tab2()
+
 
 
