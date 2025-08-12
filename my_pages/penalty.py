@@ -5,7 +5,7 @@ import plotly.express as px
 from utils.data_loader import get_drive, load_penalty_data, load_availability_vs_penalty_data
 from io import BytesIO
 import io
-from plotly.subplots import make_subplots
+from utils.helper import render_html_table_with_scroll, prepare_penalty_table
 
 def app_tab2():
     st.subheader("📌 Still on Development Phase")
@@ -303,6 +303,39 @@ def app_tab1():
     )
 
     st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.markdown("### Tabel Penalty")
+    penalty_table_df = prepare_penalty_table(filtered_df)
+
+    # Ensure clean DataFrame (no multi-index, no index name)
+    penalty_table_df = penalty_table_df.reset_index(drop=True)
+    penalty_table_df.columns = penalty_table_df.columns.astype(str)
+
+    # Convert Month to datetime (assuming format like "April-2025")
+    penalty_table_df["Month"] = pd.to_datetime(
+        penalty_table_df["Month"], format="%B-%Y"
+    )
+    # Sort it properly
+    penalty_table_df = penalty_table_df.sort_values(
+        by=["Month", "Regional TI", "Site Id"]
+    ).reset_index(drop=True)
+    # Display back as "Month-Year"
+    penalty_table_df["Month"] = penalty_table_df["Month"].dt.strftime("%B-%Y")
+
+    # Format percentage columns safely
+    for col in ["Target Availability (%)", "Availability", "Gap Ava"]:
+        if col in penalty_table_df.columns:
+            penalty_table_df[col] = (
+                pd.to_numeric(penalty_table_df[col], errors="coerce") * 100
+            ).fillna(0).map("{:.2f}%".format)
+
+    # Render table
+    html_table = render_html_table_with_scroll(penalty_table_df, max_height=450)
+    st.markdown(html_table, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### Chart Data")
 
     with st.expander("📋 Show Filtered Data Table"):
         if df.empty:
@@ -347,6 +380,7 @@ def app():
 
     with tab2:
         app_tab2()
+
 
 
 
