@@ -153,7 +153,7 @@ def app_tab1():
 
     else:
         # Default fallback for multiple or no specific selection
-        info_line = "Multiple selections"
+        info_line = "All Areas"
 
     fig = go.Figure()
 
@@ -384,6 +384,7 @@ def app():
 
     with tab2:
         app_tab2()
+
 
 
 
