@@ -127,20 +127,31 @@ def app_tab1():
     latest_month = df["Month-Year"].max()
 
     if selected_site != "All":
-        # One Site selected - show Site Id + Class Site + Site Name from latest month
         site_id = selected_site
-        # Filter for latest month and selected site
-        latest_site_data = df[(df["Site Id"] == site_id) & (df["Month-Year"] == latest_month)]
-        if not latest_site_data.empty:
-            site_class = latest_site_data.iloc[0].get("Class Site", "Unknown")
-            site_name = latest_site_data.iloc[0].get("Site Name", "Unknown")
-            info_line = (
-                f"Site ID: <b style='color:green'>{site_id}</b> | "
-                f"Site Name: <b style='color:green'>{site_name}</b> | "
-                f"Site Class: <b style='color:green'>{site_class}</b>"
-            )
-        else:
-            info_line = f"Site ID: <b>{site_id}</b>"
+        
+        # Filter for this site
+        site_df = df[df["Site Id"] == site_id].copy()
+
+        # Make a proper datetime from Year and Month name
+        site_df["date_key"] = pd.to_datetime(
+            site_df["Year"].astype(str) + "-" + site_df["Month"].astype(str),
+            format="%Y-%B"  # %B = full month name, e.g., "January"
+        )
+
+        # Sort so the last row is the latest
+        site_df = site_df.sort_values(["date_key"], ascending=True)
+
+        # Get the latest record
+        latest_site_data = site_df.iloc[-1]
+
+        site_class = latest_site_data.get("Class Site", "Unknown")
+        site_name = latest_site_data.get("Site Name", "Unknown")
+
+        info_line = (
+            f"Site ID: <b style='color:green'>{site_id}</b> | "
+            f"Site Name: <b style='color:green'>{site_name}</b> | "
+            f"Site Class: <b style='color:green'>{site_class}</b>"
+        )
 
     elif selected_regional != "All":
         # One Regional selected - show Area and Regional info
@@ -384,6 +395,7 @@ def app():
 
     with tab2:
         app_tab2()
+
 
 
 
