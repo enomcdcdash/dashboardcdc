@@ -287,7 +287,11 @@ def app_tab1():
             orientation='h',  # horizontal legend
             bgcolor='rgba(255,255,255,0.5)',  # optional: semi-transparent background for better readability
             bordercolor='black',               # optional border color
-            borderwidth=1
+            borderwidth=1,
+            font=dict(
+                size=14,       # font size in pixels
+                color='blue'   # font color
+            )
         ),
         hovermode='x unified',
         hoverlabel=dict(
@@ -380,6 +384,7 @@ def app():
 
     with tab2:
         app_tab2()
+
 
 
 
