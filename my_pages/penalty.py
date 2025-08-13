@@ -176,7 +176,7 @@ def app_tab1():
         x=status_counts.index,
         y=status_counts["Not Achieved"],
         name="Not Achieved",
-        marker_color="beige",
+        marker_color="lightpink",
         yaxis="y3",
         opacity=0.3,
         #text=status_counts["Not Achieved"],
@@ -384,6 +384,7 @@ def app():
 
     with tab2:
         app_tab2()
+
 
 
 
