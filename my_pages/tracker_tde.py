@@ -731,7 +731,8 @@ def app_tab4():
     # Layout styling
     fig.update_layout(
         title=dict(
-            text=f"<b style='color:#1f77b4; font-size:30px;'>Cumulative Progress (Kurva S)</b><br><span style='font-size:24px;'>({quarter} {year})</span>",
+            #text=f"<b style='color:#1f77b4; font-size:30px;'>Cumulative Progress (Kurva S)</b><br><span style='font-size:24px;'>({quarter} {year})</span>",
+            text=f"<b style='color:#1f77b4; font-size:30px;'>Cumulative Progress</b><span style='color:#1f77b4; font-size:30px;'> {quarter}</span>",
             x=0.5,
             xanchor="center"
         ),
@@ -814,6 +815,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
