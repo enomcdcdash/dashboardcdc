@@ -660,7 +660,7 @@ def app_tab4():
         x=df["Date"],
         y=df["Cumulative Percentage"],
         mode="lines+markers",
-        name="Cumulative %",
+        name="% Plan",
         text=df["Cumulative Percentage"].apply(lambda x: f"{x:.2f}%"),
         textposition="top center",
         marker=dict(size=8),
@@ -680,7 +680,7 @@ def app_tab4():
         x=df_actual_until_today["Date"],
         y=df_actual_until_today["Percentage Actual"],
         mode="lines+markers",
-        name="Actual %",
+        name="% Actual",
         text=df_actual_until_today["Percentage Actual"].apply(lambda x: f"{x:.2f}%"),
         textposition="top center",
         marker=dict(size=8),
@@ -815,6 +815,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
