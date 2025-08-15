@@ -740,7 +740,7 @@ def app_tab4():
             title=dict(text="Date", font=dict(size=18)),
             tickformat="%d-%b-%Y",
             tickangle=-45,
-            tickfont=dict(size=14),
+            tickfont=dict(size=16),
             showgrid=False,
             tickmode="array",
             tickvals = df["Date"][::7]
@@ -748,7 +748,7 @@ def app_tab4():
         yaxis=dict(
             title=dict(text="Cumulative Percentage (Plan/Actual) (%)", font=dict(size=18)), 
             range=[0, 110],
-            tickfont=dict(size=14),
+            tickfont=dict(size=16),
             showgrid=False
         ),
         height=600,
@@ -815,6 +815,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
