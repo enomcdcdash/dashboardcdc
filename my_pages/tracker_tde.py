@@ -779,10 +779,24 @@ def app_tab4():
     st.markdown("### 📋 Data Table")
 
     # Format date and select columns
-    df_export = df.assign(Date=df["Date"].dt.strftime("%d-%b-%Y"))[
-        ["Date", "Plan", "Cumulative Plan", "Cumulative Percentage", "Quantity", "Cumulative Actual", "Percentage Actual"]
-    ]
-
+    df_export = (
+        df.assign(Date=df["Date"].dt.strftime("%d-%b-%Y"))
+        .rename(columns={"Cumulative Percentage": "Percentage Plan"})[
+            [
+                "Date",
+                "Plan",
+                "Cumulative Plan",
+                "Percentage Plan",      # use new name here
+                "Quantity",
+                "Cumulative Actual",
+                "Percentage Actual",
+            ]
+        ]
+    )
+    # Format percentage columns with 2 decimals
+    df_export["Percentage Plan"] = df_export["Percentage Plan"].round(2)
+    df_export["Percentage Actual"] = df_export["Percentage Actual"].round(2)
+    
     # Expander for table
     with st.expander("📋 Show Data Table"):
         # Show the table
@@ -815,6 +829,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
