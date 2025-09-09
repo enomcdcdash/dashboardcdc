@@ -810,13 +810,13 @@ def app_tab4():
     # Format date and select columns
     df_export = (
         df.assign(Date=df["Date"].dt.strftime("%d-%b-%Y"))
-        .rename(columns={"Cumulative Percentage": "Percentage Plan"})[
+        .rename(columns={"Cumulative Percentage": "Percentage Plan", , "Quantity" : "Actual"})[
             [
                 "Date",
                 "Plan",
                 "Cumulative Plan",
                 "Percentage Plan",      # use new name here
-                "Quantity",
+                "Actual",
                 "Cumulative Actual",
                 "Percentage Actual",
             ]
@@ -858,6 +858,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
