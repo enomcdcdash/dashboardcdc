@@ -653,45 +653,65 @@ def app_tab4():
     today = pd.to_datetime(date.today())
 
     # Create the plot
-    fig = go.Figure()
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    today = pd.to_datetime("today").normalize()
+    df_actual_until_today = df[df["Date"] <= today]
+
+    # --- Bar chart for Plan (Quantity Target) ---
+    fig.add_trace(go.Bar(
+        x=df["Date"],
+        y=df["Plan"],
+        name="Plan Quantity",
+        marker_color="lightblue",
+        opacity=0.8,
+        hovertemplate="Plan:</b> %{y:,.0f}<extra></extra>"
+    ), secondary_y=True)
+
+    # --- Bar chart for Actual Quantity ---
+    fig.add_trace(go.Bar(
+        x=df_actual_until_today["Date"],
+        y=df_actual_until_today["Quantity"],
+        name="Actual Quantity",
+        marker_color="green",
+        opacity=0.5,
+        hovertemplate="Actual:</b> %{y:,.0f}<extra></extra>"
+    ), secondary_y=True)
 
     # Line chart for Cumulative Percentage
     fig.add_trace(go.Scatter(
         x=df["Date"],
         y=df["Cumulative Percentage"],
         mode="lines+markers",
-        name="Plan (%)",
+        name="% Plan",
         text=df["Cumulative Percentage"].apply(lambda x: f"{x:.2f}%"),
         textposition="top center",
         marker=dict(size=8),
         line=dict(shape="spline", width=5),
         hovertemplate=(
-            "<b>Plan:</b> %{customdata[0]:,.0f}<br>"
+            #"<b>Plan:</b> %{customdata[0]:,.0f}<br>"
             "<b>Cumulative Plan:</b> %{customdata[1]:,.0f}<br>"
             "<b>Cumulative Plan %:</b> %{y:.2f}%<extra></extra>"
         ),
         customdata=df[["Plan", "Cumulative Plan"]]
-    ))
-
-    today = pd.to_datetime("today").normalize()
-    df_actual_until_today = df[df["Date"] <= today]
+    ), secondary_y=False)
 
     fig.add_trace(go.Scatter(
         x=df_actual_until_today["Date"],
         y=df_actual_until_today["Percentage Actual"],
         mode="lines+markers",
-        name="Actual (%)",
+        name="% Actual",
         text=df_actual_until_today["Percentage Actual"].apply(lambda x: f"{x:.2f}%"),
         textposition="top center",
         marker=dict(size=8),
         line=dict(shape="spline", width=5, color="orange"),
         hovertemplate=(
-            "<b>Actual Quantity:</b> %{customdata[0]:,.0f}<br>"
+            #"<b>Actual Quantity:</b> %{customdata[0]:,.0f}<br>"
             "<b>Cumulative Actual:</b> %{customdata[1]:,.0f}<br>"
             "<b>Actual %:</b> %{y:.2f}%<extra></extra>"
         ),
         customdata=df_actual_until_today[["Quantity", "Cumulative Actual"]]
-    ))
+    ), secondary_y=False)
     
     # 1. Get today's date
     today = pd.to_datetime(date.today())
@@ -751,6 +771,13 @@ def app_tab4():
             tickfont=dict(size=16),
             showgrid=False
         ),
+        yaxis2=dict(  # 🔽 secondary y-axis for bar charts
+            title=dict(text="Quantity", font=dict(size=18)),
+            overlaying="y",
+            side="right",
+            tickfont=dict(size=14),
+            showgrid=False
+        ),
         height=600,
         margin=dict(l=40, r=40, t=80, b=100),
         
@@ -769,7 +796,9 @@ def app_tab4():
             y=-0.4,
             xanchor="right",
             x=1
-        )
+        ),
+        barmode="group",   # 🔽 group Plan vs Actual bars
+        bargap=0.2         # 🔽 spacing between bars
     )
 
     # Show the chart
@@ -829,6 +858,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
