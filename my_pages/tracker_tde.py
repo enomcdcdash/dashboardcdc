@@ -653,6 +653,7 @@ def app_tab4():
     today = pd.to_datetime(date.today())
 
     # Create the plot
+    #fig = go.Figure()
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     today = pd.to_datetime("today").normalize()
@@ -743,6 +744,7 @@ def app_tab4():
         font=dict(color="#1f77b4", size=16),
         yshift=10
     )
+
     # Get first date from df (assuming sorted)
     first_date = df["Date"].min()
     quarter = f"Q{((first_date.month - 1) // 3) + 1}"
@@ -760,7 +762,7 @@ def app_tab4():
             title=dict(text="Date", font=dict(size=18)),
             tickformat="%d-%b-%Y",
             tickangle=-45,
-            tickfont=dict(size=16),
+            tickfont=dict(size=14),
             showgrid=False,
             tickmode="array",
             tickvals = df["Date"][::7]
@@ -768,7 +770,7 @@ def app_tab4():
         yaxis=dict(
             title=dict(text="Cumulative Percentage (Plan/Actual) (%)", font=dict(size=18)), 
             range=[0, 110],
-            tickfont=dict(size=16),
+            tickfont=dict(size=14),
             showgrid=False
         ),
         yaxis2=dict(  # 🔽 secondary y-axis for bar charts
@@ -784,9 +786,9 @@ def app_tab4():
         # 🔽 Hover settings
         hovermode="x unified",
         hoverlabel=dict(
-            bgcolor="azure",
+            bgcolor="white",
             bordercolor="gray",
-            font_size=20,
+            font_size=16,
             font_family="Segoe UI"
         ),
         legend=dict(
@@ -810,7 +812,7 @@ def app_tab4():
     # Format date and select columns
     df_export = (
         df.assign(Date=df["Date"].dt.strftime("%d-%b-%Y"))
-        .rename(columns={"Cumulative Percentage": "Percentage Plan", , "Quantity" : "Actual"})[
+        .rename(columns={"Cumulative Percentage": "Percentage Plan", "Quantity" : "Actual"})[
             [
                 "Date",
                 "Plan",
@@ -825,7 +827,7 @@ def app_tab4():
     # Format percentage columns with 2 decimals
     df_export["Percentage Plan"] = df_export["Percentage Plan"].round(2)
     df_export["Percentage Actual"] = df_export["Percentage Actual"].round(2)
-    
+
     # Expander for table
     with st.expander("📋 Show Data Table"):
         # Show the table
@@ -844,7 +846,7 @@ def app_tab4():
         file_name="kurva_s_data.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
+    
 # === Main App ===
 def app():
     st.title("⚙️ Tracker Activity TDE")
@@ -858,6 +860,7 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
 
