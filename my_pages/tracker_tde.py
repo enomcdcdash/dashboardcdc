@@ -4,9 +4,10 @@ from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo  # ✅ For timezone-aware datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from utils.drive_utils import get_drive, upload_file_to_drive, download_file_from_drive, read_excel_from_drive, load_kurva_s
+from utils.drive_utils import get_drive, upload_file_to_drive, download_file_from_drive, read_excel_from_drive, load_kurva_s, write_excel_to_drive
 import io
-#from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+import time
+
 
 # === Constants ===
 SOW_LIST = [
@@ -412,91 +413,99 @@ def app_tab3():
         activity_df["Date"] = activity_df["Date"].dt.tz_localize(tz, ambiguous="NaT", nonexistent="NaT")
     activity_df["Date"] = activity_df["Date"].dt.normalize()
 
-    col1, col2 = st.columns(2)
+    # --- 3 Filters: Quarter, Month, SOW ---
+    col1, col2, col3 = st.columns(3)
 
+    # Ensure datetime
+    activity_df["Date"] = pd.to_datetime(activity_df["Date"], errors="coerce")
+
+    # --- Add Quarter and Month columns ---
+    activity_df["Quarter"] = activity_df["Date"].dt.to_period("Q").astype(str)  # e.g. "2025Q3"
+    activity_df["Quarter Label"] = activity_df["Quarter"].apply(lambda x: f"Q{x[-1]} {x[:4]}")  # e.g. "Q3 2025"
+    activity_df["Month Label"] = activity_df["Date"].dt.strftime("%B %Y")  # e.g. "September 2025"
+
+    # --- Quarter Filter (default = latest) ---
+    quarters = sorted(activity_df["Quarter Label"].unique())
+    default_quarter_index = len(quarters) - 1 if quarters else 0
     with col1:
-        sow_options = ["All"] + sow_df["SOW"].unique().tolist()
-        selected_sow = st.selectbox("📌 Pilih SOW", sow_options)
+        selected_quarter_label = st.selectbox(
+            "📆 Select Quarter",
+            options=quarters,
+            index=default_quarter_index,
+            key="quarter_filter_tab3"
+        )
 
-    if selected_sow == "All":
-        activity_sow = activity_df.copy()
-        unique_periods = activity_sow["SOW"].map(sow_df.set_index("SOW")["Periods"])
-    else:
-        sow_row = sow_df[sow_df["SOW"] == selected_sow].copy()
-        if sow_row.empty:
-            st.warning("Data SOW tidak ditemukan.")
-            st.stop()
+    # Convert back to period form for filtering (e.g. "2025Q3")
+    q_num = selected_quarter_label[1]
+    q_year = selected_quarter_label.split(" ")[1]
+    selected_quarter = f"{q_year}Q{q_num}"
 
-        periods = sow_row.iloc[0]["Periods"]
-        unit = sow_row.iloc[0]["Unit"]
+    # --- Filter by Quarter ---
+    filtered_by_quarter = activity_df[activity_df["Quarter"] == selected_quarter].copy()
 
-        activity_sow = activity_df[activity_df["SOW"] == selected_sow].copy()
+    # --- Month Filter (depends on selected quarter) ---
+    filtered_by_quarter["Month Num"] = filtered_by_quarter["Date"].dt.month
+    filtered_by_quarter["Year"] = filtered_by_quarter["Date"].dt.year
 
-    if activity_sow.empty:
-        st.warning("Belum ada aktivitas untuk SOW ini.")
-        st.stop()
+    # Sort months chronologically by Year then Month number
+    filtered_by_quarter = filtered_by_quarter.sort_values(["Year", "Month Num"])
 
-    activity_sow = activity_sow.sort_values("Date")
-    activity_sow["Date"] = activity_sow["Date"].dt.normalize()
+    # Extract unique month labels in proper order
+    months_in_quarter = (
+        filtered_by_quarter.drop_duplicates(["Year", "Month Num"])["Month Label"].tolist()
+    )
 
-    if selected_sow == "All":
-        periods = unique_periods.mode().iloc[0] if not unique_periods.empty else 12
-
-    if periods == 48:  # Weekly
-        activity_sow["Period"] = activity_sow["Date"].dt.to_period("W").dt.start_time
-        formatted_options = [f"W{d.isocalendar().week:02d} - {d.year}" for d in activity_sow["Period"].unique()]
-    elif periods == 12:  # Monthly
-        activity_sow["Period"] = activity_sow["Date"].dt.to_period("M").dt.start_time
-        formatted_options = [d.strftime("%B - %Y") for d in activity_sow["Period"].unique()]
-    elif periods == 4:  # Quarterly
-        tz = activity_sow["Date"].dt.tz
-        date_naive = activity_sow["Date"].dt.tz_localize(None) if tz is not None else activity_sow["Date"]
-        period_start = date_naive.dt.to_period("Q").dt.start_time
-        if tz is not None:
-            activity_sow["Period"] = period_start.dt.tz_localize(tz)
-        else:
-            activity_sow["Period"] = period_start
-        formatted_options = [f"Q{((d.month - 1) // 3) + 1} - {d.year}" for d in activity_sow["Period"].unique()]
-    elif periods == 2:  # Semiannual
-        activity_sow["Period"] = activity_sow["Date"].apply(lambda d: datetime(d.year, 1 if d.month <= 6 else 7, 1, tzinfo=tz))
-        formatted_options = [f"Semester {2 if d.month >= 7 else 1} - {d.year}" for d in activity_sow["Period"].unique()]
-    else:
-        activity_sow["Period"] = activity_sow["Date"].min()
-        formatted_options = [activity_sow["Period"].iloc[0].strftime("%d-%B-%Y")]
-
-    if selected_sow == "All":
-        formatted_options = ["All"] + formatted_options
-        formatted_to_actual = {opt: val for opt, val in zip(formatted_options[1:], activity_sow["Period"].unique())}
-    else:
-        formatted_to_actual = dict(zip(formatted_options, activity_sow["Period"].unique()))
+    month_options = ["All"] + months_in_quarter
 
     with col2:
-        selected_formatted = st.selectbox("📅 Pilih Periode", formatted_options, key="periode_selectbox_tab3")
+        selected_month_label = st.selectbox(
+            "🗓 Select Month",
+            options=month_options,
+            key="month_filter_tab3"
+        )
 
-    if selected_formatted == "All":
-        filtered_df = activity_sow.copy()
+    if selected_month_label == "All":
+        filtered_by_month = filtered_by_quarter.copy()
     else:
-        selected_period = formatted_to_actual[selected_formatted]
-        filtered_df = activity_sow[activity_sow["Period"] == selected_period].copy()
+        filtered_by_month = filtered_by_quarter[
+            filtered_by_quarter["Month Label"] == selected_month_label
+        ].copy()
 
+    # --- SOW Filter ---
+    with col3:
+        sow_options = ["All"] + sow_df["SOW"].unique().tolist()
+        selected_sow = st.selectbox("📌 Select SOW", sow_options, key="sow_filter_tab3")
+
+    if selected_sow == "All":
+        filtered_df = filtered_by_month.copy()
+    else:
+        filtered_df = filtered_by_month[filtered_by_month["SOW"] == selected_sow].copy()
+
+    # --- Handle empty result ---
     if filtered_df.empty:
-        st.info("Tidak ada aktivitas pada periode ini.")
-        return
+        st.warning("⚠️ No activity data for this selection.")
+        st.stop()
 
-    filtered_df["Date"] = pd.to_datetime(filtered_df["Date"], errors="coerce")
-    filtered_df["Date"] = filtered_df["Date"].dt.normalize()
+    # --- Sort ascending first for correct cumulative calculation ---
+    filtered_df = filtered_df.sort_values("Date", ascending=True)
 
-    filtered_df = filtered_df.sort_values(["SOW", "Date"])
+    # --- Compute cumulative per SOW ---
     filtered_df["Cumulative"] = filtered_df.groupby("SOW")["Quantity"].cumsum()
+
+    # --- Then sort descending for display (latest on top) ---
     filtered_df = filtered_df.sort_values("Date", ascending=False)
+
+    # --- Format Date for display ---
     filtered_df["Date_display"] = filtered_df["Date"].dt.strftime("%d-%B-%Y")
 
+    # --- Convert Evidence columns to clickable links ---
     for col in ["Evidence 1", "Evidence 2", "Evidence 3"]:
         if col in filtered_df.columns:
             filtered_df[col] = filtered_df[col].fillna("").apply(
                 lambda x: f'<a href="{x}" target="_blank">Lihat</a>' if x.strip() != "" else ""
             )
 
+    # --- Reorder and rename columns for display ---
     display_columns = ["Date_display", "SOW", "Quantity", "Cumulative", "Evidence 1", "Evidence 2", "Evidence 3"]
     filtered_df = filtered_df[[col for col in display_columns if col in filtered_df.columns]]
     filtered_df = filtered_df.rename(columns={"Date_display": "Date"})
@@ -551,7 +560,7 @@ def app_tab3():
         unsafe_allow_html=True,
     )
 
-    st.markdown("### 📋 Riwayat Activity TDE")
+    st.markdown("### 📋 Tabel Riwayat Activity TDE")
 
     header_cols = st.columns([2, 2, 1, 1, 1, 1, 1, 1])
     headers = list(filtered_df.columns) + ["Actions"]
@@ -627,6 +636,7 @@ def app_tab3():
             placeholder.empty()
 
         st.rerun()
+
 def app_tab4():
     #st.header("📈 Kurva S Project TDE - Progress Chart")
     tab4_title, tab4_button = st.columns([9, 1])
@@ -638,25 +648,72 @@ def app_tab4():
             st.cache_data.clear()
             st.rerun()
 
-    folder_id = EXCEL_FOLDER_ID  # 🔁 Replace with actual folder ID
+    # --- Load data ---
+    folder_id = EXCEL_FOLDER_ID
     df = load_kurva_s(folder_id)
 
-    # Ensure daily frequency, fill missing rows if any
-    df = df.set_index("Date").asfreq("D").fillna(0).reset_index()
+    # --- Ensure datetime ---
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
 
-    # Recalculate cumulative values after fill
-    df["Cumulative Plan"] = df["Plan"].cumsum()
-    total_plan = df["Cumulative Plan"].iloc[-1]
-    df["Cumulative Percentage"] = (df["Cumulative Plan"] / total_plan) * 100
+    # --- Add Quarter columns ---
+    df["Quarter"] = df["Date"].dt.to_period("Q").astype(str)
+    df["Quarter Label"] = df["Quarter"].apply(lambda x: f"Q{x[-1]} {x[:4]}")
 
-    # Today's date for vertical line
-    today = pd.to_datetime(date.today())
+    # --- Quarter Filter (default = latest) ---
+    quarters = sorted(df["Quarter Label"].unique())
+    default_index = len(quarters) - 1 if quarters else 0
+    selected_quarter_label = st.selectbox(
+        "📅 Select Quarter",
+        options=quarters,
+        index=default_index,
+        key="quarter_filter_tab4"
+    )
 
-    # Create the plot
-    #fig = go.Figure()
+    # Convert label (e.g. 'Q3 2025') back to period key (e.g. '2025Q3')
+    q_num = selected_quarter_label[1]
+    q_year = selected_quarter_label.split(" ")[1]
+    selected_quarter = f"{q_year}Q{q_num}"
+
+    # --- Filter data for selected quarter ---
+    df = df[df["Quarter"] == selected_quarter].copy()
+
+    # --- Rebuild date index only within that quarter’s range ---
+    if not df.empty:
+        quarter_start = df["Date"].min().normalize()
+        quarter_end = df["Date"].max().normalize()
+        all_days = pd.date_range(quarter_start, quarter_end, freq="D")
+        df = (
+            df.set_index("Date")
+            .reindex(all_days)
+            .fillna(0)
+            .rename_axis("Date")
+            .reset_index()
+        )
+
+    # --- ✅ Recalculate cumulative values *after* filtering and filling ---
+    if not df.empty:
+        # --- Recalculate cumulative values for the selected quarter only ---
+        df["Cumulative Plan"] = df["Plan"].cumsum()
+        df["Cumulative Actual"] = df["Quantity"].cumsum()
+
+        # --- Calculate total within this quarter only ---
+        total_plan = df["Cumulative Plan"].iloc[-1] if df["Cumulative Plan"].sum() > 0 else 1
+        total_actual = df["Cumulative Actual"].iloc[-1] if df["Cumulative Actual"].sum() > 0 else 1
+
+        # --- Calculate percentages relative to totals ---
+        df["Cumulative Percentage"] = (df["Cumulative Plan"] / total_plan) * 100
+        df["Percentage Actual"] = (df["Cumulative Actual"] / total_plan) * 100
+    else:
+        df["Cumulative Plan"] = df["Cumulative Actual"] = 0
+        df["Cumulative Percentage Plan"] = df["Cumulative Percentage Actual"] = 0
+
+    # --- ✅ Limit "today" marker to quarter end ---
+    today_real = pd.to_datetime("today").normalize()
+    quarter_end = df["Date"].max().normalize() if not df.empty else today_real
+    today = min(today_real, quarter_end)
+
+    # --- Create the plot ---
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-
-    today = pd.to_datetime("today").normalize()
     df_actual_until_today = df[df["Date"] <= today]
 
     # --- Bar chart for Plan (Quantity Target) ---
@@ -715,7 +772,7 @@ def app_tab4():
     ), secondary_y=False)
     
     # 1. Get today's date
-    today = pd.to_datetime(date.today())
+    # today = pd.to_datetime(date.today())
 
     # 2. Find the Percentage Actual value for today (if available)
     if today in df["Date"].values:
@@ -754,7 +811,7 @@ def app_tab4():
     fig.update_layout(
         title=dict(
             #text=f"<b style='color:#1f77b4; font-size:30px;'>Cumulative Progress (Kurva S)</b><br><span style='font-size:24px;'>({quarter} {year})</span>",
-            text=f"<b style='color:#1f77b4; font-size:30px;'>Cumulative Progress</b><span style='color:#1f77b4; font-size:30px;'> {quarter}</span>",
+            text=f"<b style='color:#1f77b4; font-size:30px;'>Cumulative Progress</b><span style='color:#1f77b4; font-size:30px;'> Q{selected_quarter[-1]} {selected_quarter[:4]}</span>",
             x=0.5,
             xanchor="center"
         ),
@@ -846,7 +903,7 @@ def app_tab4():
         file_name="kurva_s_data.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    
+
 # === Main App ===
 def app():
     st.title("⚙️ Tracker Activity TDE")
@@ -860,25 +917,3 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
