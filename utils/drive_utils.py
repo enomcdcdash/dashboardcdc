@@ -196,3 +196,4 @@ def load_kurva_s(folder_id,
 
 
 
+
