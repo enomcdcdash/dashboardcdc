@@ -126,7 +126,7 @@ def get_file_id_from_name(drive, folder_id, filename):
 
 @st.cache_data(show_spinner="📊 Processing Kurva S data...", ttl=3600)
 def load_kurva_s(folder_id, 
-                 plan_filename="Report_MS_TDE_Q3.xlsx", 
+                 plan_filename="Report_MS_TDE.xlsx", 
                  plan_sheet="Kurva S",
                  actual_filename="activity_tracker_tde.xlsx", 
                  actual_sheet="Sheet1"):
@@ -191,6 +191,7 @@ def load_kurva_s(folder_id,
     df.loc[df["Cumulative Actual"].isna(), "Percentage Actual"] = None  # <- this ensures future rows show as empty
 
     return df
+
 
 
 
