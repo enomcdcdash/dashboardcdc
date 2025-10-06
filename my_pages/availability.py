@@ -153,7 +153,7 @@ def app_tab1(df):
             title=dict(text="Date", font=dict(size=16, family="Arial", color="black")),
             tickfont=dict(size=14),
             tickmode="linear",
-            dtick=86400000.0,
+            dtick=4 * 86400000.0,
             tickformat="%d-%b-%Y",  # 👈 Format to show as 17-Jul-2025
             tickangle=-45
         ),
@@ -596,3 +596,4 @@ def app():
             st.warning("No weekly data available.")
         else:
             app_tab3(df_weekly)   # <-- You will define this
+
