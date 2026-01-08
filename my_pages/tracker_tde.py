@@ -659,15 +659,28 @@ def app_tab4():
     df["Quarter"] = df["Date"].dt.to_period("Q").astype(str)
     df["Quarter Label"] = df["Quarter"].apply(lambda x: f"Q{x[-1]} {x[:4]}")
 
-    # --- Quarter Filter (default = latest) ---
-    quarters = sorted(df["Quarter Label"].unique())
-    default_index = len(quarters) - 1 if quarters else 0
+    # Create mapping Quarter → Label
+    quarter_map = (
+        df[["Quarter", "Quarter Label"]]
+        .drop_duplicates()
+        .sort_values("Quarter")   # ← chronological sort
+    )
+
+    quarters = quarter_map["Quarter Label"].tolist()
+    default_index = len(quarters) - 1
+
     selected_quarter_label = st.selectbox(
         "📅 Select Quarter",
         options=quarters,
         index=default_index,
         key="quarter_filter_tab4"
     )
+
+    # Convert label back to Quarter
+    selected_quarter = quarter_map.loc[
+        quarter_map["Quarter Label"] == selected_quarter_label,
+        "Quarter"
+    ].values[0]
 
     # Convert label (e.g. 'Q3 2025') back to period key (e.g. '2025Q3')
     q_num = selected_quarter_label[1]
@@ -917,4 +930,5 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
