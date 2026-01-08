@@ -721,7 +721,12 @@ def app_tab4():
         df["Cumulative Percentage Plan"] = df["Cumulative Percentage Actual"] = 0
 
     # --- ✅ Limit "today" marker to quarter end ---
-    today_real = pd.to_datetime("today").normalize()
+    # today_real = pd.to_datetime("today").normalize()
+    today_real = (
+        pd.Timestamp.now(tz="Asia/Jakarta")
+        .normalize()
+        .tz_localize(None)
+    )
     quarter_end = df["Date"].max().normalize() if not df.empty else today_real
     today = min(today_real, quarter_end)
 
@@ -930,5 +935,6 @@ def app():
         app_tab3()
     with tab4:
         app_tab4()
+
 
 
