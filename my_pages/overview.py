@@ -4,10 +4,11 @@ import folium
 from streamlit_folium import folium_static
 from utils.data_loader import get_drive, load_kml_file
 import folium
-from streamlit_folium import st_folium
+from streamlit_folium import st_folium 
 import plotly.graph_objects as go
 import plotly.express as px
 from io import BytesIO
+from branca.element import Element
 
 # Utility: define color per Regional
 def get_color(regional):
@@ -71,7 +72,10 @@ def app_tab1():
         sub_df = gdf[gdf["Regional"] == reg]
 
         total_sites = len(sub_df)
-        class_counts = sub_df["Site Class"].value_counts().to_dict()
+        # Count class only for On Service
+        on_df = sub_df[sub_df["Status"].str.lower().str.contains("on", na=False)]
+        class_counts = on_df["Site Class"].value_counts().to_dict()
+        #class_counts = sub_df["Site Class"].value_counts().to_dict()
         status_on = sub_df[sub_df["Status"].str.lower().str.contains("on")].shape[0]
         status_off = sub_df[sub_df["Status"].str.lower().str.contains("cut")].shape[0]
 
@@ -86,18 +90,41 @@ def app_tab1():
                     font-family: 'Segoe UI', sans-serif;
                 ">
                     <h5 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 22px;">{reg}</h5>
-                    <p style="margin: 0; font-size: 16px;"><b>Total Sites:</b> {total_sites}</p>
-                    <p style="margin: 0; font-size: 16px;">
-                        <b>Class:</b> 
-                        Platinum ({class_counts.get('Platinum', 0)}), 
-                        Gold ({class_counts.get('Gold', 0)}), 
-                        Silver ({class_counts.get('Silver', 0)}), 
-                        Bronze ({class_counts.get('Bronze', 0)})
+                    <p style="margin: 0; font-size: 20px;"><b>Total Site On Service : {status_on}</b></p>
+                    <p style="margin: 0; font-size: 19px;">
+                        <b>
+                            Site Class :<br>
+                            Platinum ({class_counts.get('Platinum', 0)}), 
+                            Gold ({class_counts.get('Gold', 0)}), 
+                            Silver ({class_counts.get('Silver', 0)}), 
+                            Bronze ({class_counts.get('Bronze', 0)})
+                        </b>
                     </p>
-                    <p style="margin: 0; font-size: 16px;"><b>Site On Service:</b> {status_on}</p>
-                    <p style="margin: 0; font-size: 16px;"><b>Site Cut Off:</b> {status_off}</p>
                 </div>
             """, unsafe_allow_html=True)
+    
+    # --- Total On Service Summary (One Line) ---
+    total_on_service = gdf[
+        gdf["Status"].str.lower().str.contains("on", na=False)
+    ].shape[0]
+
+    st.markdown(f"""
+        <div style="
+            background-color: #f1fdf5;
+            border-radius: 14px;
+            padding: 18px 25px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: #1e8449;
+            text-align: center;
+        ">
+            Total Sites On Service : {total_on_service} Sites
+        </div>
+    """, unsafe_allow_html=True)
 
     # Ensure lat/lon columns
     if "Latitude" not in gdf.columns or "Longitude" not in gdf.columns:
@@ -123,11 +150,21 @@ def app_tab1():
         </div>
         """
         if pd.notna(row["Latitude"]) and pd.notna(row["Longitude"]):
+
+            status = str(row.get("Status", "")).lower()
+
+            # If site is Cut Off → force grey
+            if "cut" in status:
+                marker_color = "lightgray"
+            else:
+                # Otherwise use regional color mapping
+                marker_color = get_color(row.get("Regional"))
+
             folium.Marker(
                 location=[row["Latitude"], row["Longitude"]],
                 tooltip=row.get("Site Name", ""),
                 popup=folium.Popup(popup_html, max_width=300),
-                icon=folium.Icon(color=get_color(row.get("Regional")))
+                icon=folium.Icon(color=marker_color)
             ).add_to(m)
 
     st.markdown("""
@@ -138,8 +175,80 @@ def app_tab1():
         </style>
     """, unsafe_allow_html=True)
 
-    folium_static(m, width=2015, height=800)
+    # --- Calculate ON Service Summary ---
+    on_summary = (
+        gdf[gdf["Status"].str.lower().str.contains("on", na=False)]
+        .groupby("Regional")
+        .size()
+        .to_dict()
+    )
     
+    from branca.element import MacroElement, Figure
+    from jinja2 import Template
+
+    total_on = sum(on_summary.values())
+
+    # Build rows dynamically from on_summary
+    rows_html = ""
+    for reg, count in sorted(on_summary.items()):
+        rows_html += f"""
+            <tr>
+                <td style="padding: 3px 10px 3px 0; color: #34495e;">{reg}</td>
+                <td style="padding: 3px 0; font-weight: bold; color: #27ae60; text-align: right;">{count}</td>
+            </tr>
+        """
+
+    template = f"""
+    {{% macro html(this, kwargs) %}}
+    <div id="map-legend" style="
+        position: absolute;
+        bottom: 30px;
+        left: 30px;
+        z-index: 9999;
+        width: 240px;
+        background: rgba(255, 255, 255, 0.96);
+        padding: 14px 18px;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 13px;
+        line-height: 1.6;
+        border-left: 5px solid #27ae60;
+        pointer-events: none;
+    ">
+        <div style="
+            font-size: 14px;
+            font-weight: bold;
+            color: #1a252f;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 6px;
+        ">📡 Site On Service</div>
+        <table style="width: 100%; border-collapse: collapse;">
+            {rows_html}
+            <tr>
+                <td colspan="2" style="border-top: 1px solid #ccc; padding-top: 8px; margin-top: 6px;"></td>
+            </tr>
+            <tr>
+                <td style="padding: 2px 10px 2px 0; color: #1a252f; font-weight: bold;">Total</td>
+                <td style="padding: 2px 0; font-weight: bold; font-size: 15px; color: #27ae60; text-align: right;">{total_on}</td>
+            </tr>
+        </table>
+    </div>
+    {{% endmacro %}}
+    """
+
+    macro = MacroElement()
+    macro._template = Template(template)
+    m.get_root().add_child(macro)
+
+    folium_static(m, width=2015, height=800)
+
+    #folium_static(m, width=2015, height=800)
+    #from streamlit_folium import st_folium
+    #st.write("Total ON:", total_on)
+    #st_folium(m, width=2015, height=800)
+
 # --- TAB 2: Summary View ---
 def app_tab2():
     st.subheader("📊 CDC Sites Summary")
@@ -148,13 +257,28 @@ def app_tab2():
     if gdf is None or gdf.empty:
         st.warning("Data is not available. Please refresh from Tab 1.")
         return
+    
+    # --- Status Filter ---
+    status_filter = st.selectbox(
+        "Filter by Site Status",
+        ["All", "On Service", "Cut Off"]
+    )
+
+    # Apply filter
+    if status_filter == "On Service":
+        filtered_gdf = gdf[gdf["Status"].str.lower().str.contains("on", na=False)]
+    elif status_filter == "Cut Off":
+        filtered_gdf = gdf[gdf["Status"].str.lower().str.contains("cut", na=False)]
+    else:
+        filtered_gdf = gdf.copy()
+
 
     # Use 1:2 ratio layout (wider pie chart column now)
     col1, col2 = st.columns([2, 4])
 
     # ----- DONUT CHART: Status Breakdown -----
     with col1:
-        status_counts = gdf["Status"].str.strip().str.lower().value_counts()
+        status_counts = filtered_gdf["Status"].str.strip().str.lower().value_counts()
         on_count = status_counts.get("on service", 0)
         off_count = status_counts.get("cut off", 0)
         total_sites = on_count + off_count
@@ -199,7 +323,7 @@ def app_tab2():
 
     # ----- BAR CHART: Regional Breakdown -----
     with col2:
-        regional_counts = gdf["Regional"].value_counts().reset_index()
+        regional_counts = filtered_gdf["Regional"].value_counts().reset_index()
         regional_counts.columns = ["Regional", "Count"]
 
         custom_order = [
@@ -260,7 +384,7 @@ def app_tab2():
 
     # ----- BAR CHART: Distribution by Site Class -----
     with class_col1:
-        site_class_counts = gdf["Site Class"].value_counts().reset_index()
+        site_class_counts = filtered_gdf["Site Class"].value_counts().reset_index()
         site_class_counts.columns = ["Site Class", "Count"]
 
         custom_order = ["Platinum", "Gold", "Silver", "Bronze"]
@@ -289,7 +413,7 @@ def app_tab2():
         )
 
         class_bar.update_traces(
-            textfont=dict(size=16),
+            textfont=dict(size=18, color="black"),
             hoverlabel=dict(
                 font_size=16,
                 bgcolor="mintcream",
@@ -301,7 +425,7 @@ def app_tab2():
         st.plotly_chart(class_bar, use_container_width=True)
 
     with class_col2:
-        grouped = gdf.groupby(["Regional", "Site Class"]).size().reset_index(name="Count")
+        grouped = filtered_gdf.groupby(["Regional", "Site Class"]).size().reset_index(name="Count")
 
         regional_order = ["Sumbagteng", "Sumbagsel", "Jawa Timur", "Bali Nusra", "Kalimantan", "Sulawesi", "Puma"]
         site_class_order = ["Bronze", "Silver", "Gold", "Platinum"]
@@ -403,15 +527,16 @@ def app_tab3():
     #font_size_px = font_size_map[selected_font_size]
 
     # ---- CASCADING FILTERS ----
-    #st.markdown("### 🔍 Filter by:")
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
+    # ---- AREA FILTER ----
     with col1:
         area_options = ["All"] + sorted(df["Area"].dropna().unique())
         selected_area = st.selectbox("Area", area_options)
 
     filtered_df = df[df["Area"] == selected_area] if selected_area != "All" else df.copy()
 
+    # ---- REGIONAL FILTER ----
     with col2:
         regional_options = ["All"] + sorted(filtered_df["Regional"].dropna().unique())
         selected_regional = st.selectbox("Regional", regional_options)
@@ -419,6 +544,7 @@ def app_tab3():
     if selected_regional != "All":
         filtered_df = filtered_df[filtered_df["Regional"] == selected_regional]
 
+    # ---- NS FILTER ----
     with col3:
         ns_options = ["All"] + sorted(filtered_df["NS"].dropna().unique())
         selected_ns = st.selectbox("NS", ns_options)
@@ -426,11 +552,38 @@ def app_tab3():
     if selected_ns != "All":
         filtered_df = filtered_df[filtered_df["NS"] == selected_ns]
 
+    # ---- STATUS FILTER ----
+    with col4:
+        status_options = ["All", "On Service", "Cut Off"]
+        selected_status = st.selectbox("Status", status_options)
+
+    if selected_status == "On Service":
+        filtered_df = filtered_df[
+            filtered_df["Status"].str.lower().str.contains("on", na=False)
+        ]
+    elif selected_status == "Cut Off":
+        filtered_df = filtered_df[
+            filtered_df["Status"].str.lower().str.contains("cut", na=False)
+        ]
+
     # ---- STYLED TABLE ----
     col_title, col_font = st.columns([8, 2])
 
     with col_title:
         st.markdown("### 📄 Tabel Site List CDC")
+        st.markdown(
+            f"""
+            <div style="
+                font-size:22px;
+                font-weight:600;
+                color:#2c3e50;
+                margin-top:5px;
+            ">
+                Total Sites : {len(filtered_df)}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     with col_font:
         selected_font_size = st.selectbox("🔠 Font Size", list(font_size_map.keys()), index=1)
@@ -539,4 +692,3 @@ def app():
 
     with tab3:
         app_tab3()
-
