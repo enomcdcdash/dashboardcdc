@@ -89,7 +89,7 @@ def app_tab1():
                     box-shadow: 1px 1px 6px rgba(0, 0, 0, 0.1);
                     font-family: 'Segoe UI', sans-serif;
                 ">
-                    <h5 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 22px;">{reg}</h5>
+                    <h5 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 24px;">{reg}</h5>
                     <p style="margin: 0; font-size: 20px;"><b>Total Site On Service : {status_on}</b></p>
                     <p style="margin: 0; font-size: 19px;">
                         <b>
@@ -693,3 +693,4 @@ def app():
     with tab3:
 
         app_tab3()
+
