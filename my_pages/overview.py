@@ -18,8 +18,8 @@ def get_color(regional):
         'Sumbagsel': 'pink',
         'Jawa Timur': 'green',
         'Jawa Tengah': 'blue',
-        'Jawa Barat': 'orange',
-        'Kalimantan': 'cadetblue',
+        'Jawa Barat': 'purple',
+        'Kalimantan': 'orange',
         'Bali Nusra': 'lightgreen',
         'Sulawesi': 'beige',
         'Puma' : 'lightred'
@@ -691,4 +691,5 @@ def app():
         app_tab2()
 
     with tab3:
+
         app_tab3()
