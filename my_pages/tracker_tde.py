@@ -33,9 +33,28 @@ EXCEL_FILE_NAME = "activity_tracker_tde.xlsx"
 EXCEL_FOLDER_ID = "1iTLqRrwbWhkIHvnXp15VTTZFl90lRyml"
 EVIDENCE_FOLDER_ID = "11u1ewfwri9LyLcnhp41UnDy5jAu34IM-"
 
+@st.cache_data(ttl=300)   # Refresh every 5 minutes
+def get_sow_list():
+    try:
+        sow_df = read_excel_from_drive(EXCEL_FOLDER_ID, "sow_tde.xlsx")
+
+        # Remove blank values, duplicates, and convert to list
+        return (
+            sow_df["SOW"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .drop_duplicates()
+            .tolist()
+        )
+    except Exception as e:
+        st.error(f"Failed to load SOW list: {e}")
+        return []
+        
 # === Tab 1: Data Submission ===
 def app_tab1():
     st.header("📥 Input Activity TDE")
+    SOW_LIST = get_sow_list()
     jakarta_today = datetime.now(ZoneInfo("Asia/Jakarta")).date()
 
     if "tde_submitted" not in st.session_state:
